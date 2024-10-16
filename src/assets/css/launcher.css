@@ -4,6 +4,11 @@
 @import 'panels/home.css';
 @import 'panels/settings.css';
 
+:root {
+    --hover-color-secondary: #966cd6;
+}
+
+
 body {
     margin: 0;
     padding: 0;
@@ -173,3 +178,56 @@ body.global::before {
     filter: blur(10px);
     z-index: -1;
 }
+/* Classe réutilisable pour l'effet du hover */
+.element-hover {
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.2s ease-in-out;
+}
+
+.element-hover::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 100%;
+    background-color: var(--color);
+    opacity: 0;
+    transition: opacity 250ms ease;
+    z-index: -1;
+}
+
+.element-hover:hover::before {
+    opacity: 0.4;
+}
+
+.element-hover:hover {
+    transform: none;
+}
+
+/* Pour éviter le problème du padding avec le hover dans le titre-tab */
+.element-hover-2 {
+    overflow: hidden;
+    transition: transform 0.2s ease-in-out;
+    position: relative;
+    padding: 2rem;
+}
+
+.element-hover-2::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 100%;
+    background-color: var(--color);
+    opacity: 0;
+    transition: opacity 250ms ease;
+    z-index: -1;
+}
+
+.element-hover-2:hover::before {
+    opacity: 0.4;
+}
+
