@@ -140,10 +140,11 @@ class Launcher {
                     continue
                 }
                 if (account.meta.type === 'Xbox') {
+                    const loader = `<div class="loader"></div>`;
                     console.log(`Account Type: ${account.meta.type} | Username: ${account.name}`);
                     popupRefresh.openPopup({
-                        title: 'Connexion',
-                        content: `Refresh account Type: ${account.meta.type} | Username: ${account.name}`,
+                        title: `Bienvenue ${account.name}`,
+                        content: loader,
                         color: 'var(--color)',
                         background: false
                     });
@@ -165,10 +166,11 @@ class Launcher {
                     await addAccount(refresh_accounts)
                     if (account_ID == account_selected) accountSelect(refresh_accounts)
                 } else if (account.meta.type == 'AZauth') {
+                    const loader = `<div class="loader"></div>`;
                     console.log(`Account Type: ${account.meta.type} | Username: ${account.name}`);
                     popupRefresh.openPopup({
-                        title: 'Connexion',
-                        content: `Refresh account Type: ${account.meta.type} | Username: ${account.name}`,
+                        title: `Bienvenue ${account.name}`,
+                        content: loader,
                         color: 'var(--color)',
                         background: false
                     });
@@ -192,7 +194,7 @@ class Launcher {
                     console.log(`Account Type: ${account.meta.type} | Username: ${account.name}`);
                     popupRefresh.openPopup({
                         title: 'Connexion',
-                        content: `Refresh account Type: ${account.meta.type} | Username: ${account.name}`,
+                        content: `You cannot anymore connect with mojang if you are here you are a mojang dev | Username: ${account.name}`,
                         color: 'var(--color)',
                         background: false
                     });

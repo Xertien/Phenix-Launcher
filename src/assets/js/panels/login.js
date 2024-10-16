@@ -35,11 +35,14 @@ class Login {
         loginHome.style.display = 'block';
 
         microsoftBtn.addEventListener("click", () => {
+            const loader = `<div class="loader"></div>`;
+        
             popupLogin.openPopup({
-                title: 'Connexion',
-                content: 'Veuillez patienter...',
+                title: 'En cours de connexion...',
+                content: loader,
                 color: 'var(--color)'
             });
+                
 
             ipcRenderer.invoke('Microsoft-window', this.config.client_id).then(async account_connect => {
                 if (account_connect == 'cancel' || !account_connect) {

@@ -11,7 +11,7 @@
  *                                                                             *
  ******************************************************************************/
 
-.status-server {
+ .status-server {
     position: relative;
     display: flex;
     justify-content: space-between;
@@ -24,6 +24,29 @@
     margin-top: 3rem;
     padding: 1rem;
     text-align: center;
+    overflow: hidden;
+    z-index: 1;
+}
+
+.status-server::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 0;
+    border-radius: 10px;
+    background-color: rgb(129, 110, 216);
+    z-index: -1;
+    transition: all 250ms;
+}
+
+.status-server:hover {
+    color: rgb(129, 110, 216);
+}
+
+.status-server:hover::before {
+    width: 100%;
 }
 
 .server-status-icon {
@@ -94,13 +117,39 @@
 }
 
 .titre-tab-new {
+    position: relative;
     margin-top: 1rem;
     font-size: 2rem;
     padding: 0.5rem 1rem;
     border-radius: 2rem;
     background: var(--background-transparent);
     color: var(--color);
+    z-index: 1;
 }
+
+.titre-tab-new::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 100%;
+    border-radius: 2rem;
+    background-color: var(--color);
+    opacity: 0;
+    transition: opacity 250ms;
+    z-index: -1;
+}
+
+.titre-tab-new:hover::before {
+    opacity: 0.2;
+}
+
+.titre-tab-new:hover {
+    color: #fff;
+    transform: translateY(0);
+}
+
 
 .news-list {
     width: 90%;
@@ -114,7 +163,33 @@
     margin: 0 0 1rem 0;
     border-radius: 10px;
     background: var(--background-transparent);
+    position: relative;
+    overflow: hidden;
+    cursor: pointer;
+    transition: all 250ms;
 }
+
+.news-block::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 100%;
+    background-color: var(--color);
+    opacity: 0;
+    transition: opacity 250ms;
+    z-index: -1;
+}
+
+.news-block:hover::before {
+    opacity: 0.2;
+}
+
+.news-block:hover {
+    color: var(--hover-text-color);
+}
+
 
 .news-header {
     display: flex;
@@ -182,6 +257,7 @@
 }
 
 .social-block {
+    position: relative;
     display: flex;
     background: var(--background-transparent);
     width: 90px;
@@ -192,7 +268,32 @@
     cursor: pointer;
     align-items: center;
     justify-content: center;
+    overflow: hidden;
+    z-index: 1;
 }
+
+.social-block::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 100%;
+    border-radius: 10px;
+    background-color: var(--color);
+    opacity: 0;
+    transition: opacity 250ms;
+    z-index: -1;
+}
+
+.social-block:hover::before {
+    opacity: 0.2;
+}
+
+.social-block:hover {
+    color: #fff;
+}
+
 
 .social-block .icon-social {
     pointer-events: none;
@@ -208,22 +309,47 @@
  *                                                                             *
  ******************************************************************************/
 
-.sidebar {
+ .sidebar {
+    position: relative;
     display: flex;
     justify-content: space-between;
     align-items: center;
     width: 100%;
     height: 90px;
     background: var(--background-transparent);
+    overflow: hidden; /* Pour s'assurer que le pseudo-élément reste dans les limites de la sidebar */
 }
+
+.sidebar::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 100%;
+    background-color: var(--color);
+    opacity: 0;
+    transition: opacity 250ms;
+    z-index: -1;
+}
+
+.sidebar:hover::before {
+    opacity: 0.2;
+}
+
 
 .player-options {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    border-radius: 15px;
+    border-radius: 20px;
     height: 3rem;
     margin: 0 1.5rem;
+    border: 4px solid transparent;
+    transition: border-color 0.3s ease;
+}
+.player-options:hover {
+    border-color: var(--element-color);
 }
 
 .player-head {
@@ -254,43 +380,103 @@
     justify-content: space-between;
     align-items: center;
     position: relative;
-    border: solid 3px var(--element-color);
-    border-radius: 15px;
     height: 3.2rem;
     padding-right: 1.9rem;
 }
 
+/* From Uiverse.io by adamgiebl */ 
 .play-btn {
-    border: none;
-    border-radius: 10px;
-    background: none;
-    color: var(--color);
-    font-size: 2rem;
-    font-weight: bolder;
-    padding: 0 1.5rem;
-    pointer-events: none;
-}
-
-.instance-select {
     display: flex;
     align-items: center;
-    position: absolute;
-    right: -3;
-    top: -2;
-    color: var(--element-color);
-    font-size: 1rem;
-    height: calc(100% - 1px);
-    border: solid 3px var(--element-color);
-    text-align: center;
-    border-radius: 15px;
-    padding: 0 0.5rem;
+    font-family: inherit;
     cursor: pointer;
+    font-weight: 500;
+    font-size: 17px;
+    padding: 0.8em 1.3em 0.8em 0.9em;
+    color: white;
+    background: #ad5389;
+    background: linear-gradient(to right, #0f0c29, #302b63, #24243e);
+    border: none;
+    letter-spacing: 0.05em;
+    border-radius: 16px;
+    margin-right: 10px;
+  }
+  
+  .play-btn svg {
+    margin-right: 3px;
+    transform: rotate(30deg);
+    transition: transform 0.5s cubic-bezier(0.76, 0, 0.24, 1);
+  }
+  
+  .play-btn span {
+    transition: transform 0.5s cubic-bezier(0.76, 0, 0.24, 1);
+  }
+  
+  .play-btn:hover svg {
+    transform: translateX(5px) rotate(90deg);
+  }
+  
+  .play-btn:hover span {
+    transform: translateX(7px);
+  }
+  
+  
+
+
+/* From Uiverse.io by sammykINC */ 
+/* works only on a dark background with these parameters */
+
+.instance-select {
+    border-radius: 50%;
+    border: none;
+    display: flex;
+    place-items: center;
+    background-color: transparent;
+    cursor: pointer;
+    width: 38px;
+    height: 38px;
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256"><path fill="%23FFFFFF" d="M140,128a12,12,0,1,1-12-12A12,12,0,0,1,140,128ZM128,72a12,12,0,1,0-12-12A12,12,0,0,0,128,72Zm0,112a12,12,0,1,0,12,12A12,12,0,0,0,128,184Z"/></svg>');
+    background-size: contain;
+    background-repeat: no-repeat;
+    transition: background-color 250ms ease, transform 250ms ease;
 }
 
-.instance-select:before {
-    transform: rotate(270deg);
-    pointer-events: none;
+.instance-select:hover {
+    background-color: rgba(129, 110, 216, 0.2);
+    transform: scale(1.1);
 }
+
+.instance-select:active {
+    background-color: rgba(65, 65, 65, 0.5);
+}
+
+.instance-select > svg {
+    display: none;
+}
+
+
+.instance-select > svg {
+    display: none;
+}
+
+.instance-select > svg:active {
+    background-color: rgba(65, 65, 65, 0.5);
+}
+
+.instance-select > svg:not(:active) {
+    animation: fadeOut 0.9s;
+}
+
+@keyframes fadeOut {
+    0% {
+        outline: 1px solid rgba(90, 90, 90, 0.5);
+    }
+
+    100% {
+        background-color: transparent;
+    }
+}
+
 
 .info-starting-game {
     display: none;
@@ -314,13 +500,56 @@
     border-radius: 10px;
 }
 
+/* From Uiverse.io by vinodjangid07 */ 
 .settings-btn {
-    width: 3rem;
-    height: 3rem;
-    font-size: 3rem;
-    color: var(--element-color);
-    margin: 0 1.5rem;
+  width: 45px;
+  height: 45px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background-color: rgb(129, 110, 216);
+  border-radius: 10px;
+  cursor: pointer;
+  border: none;
+  box-shadow: 0px 0px 0px 2px rgb(212, 209, 255);
+  margin: 0 1.5rem;
 }
+.bar {
+  width: 50%;
+  height: 2px;
+  background-color: rgb(229, 229, 229);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  border-radius: 2px;
+}
+.bar::before {
+  content: "";
+  width: 2px;
+  height: 2px;
+  background-color: rgb(126, 117, 255);
+  position: absolute;
+  border-radius: 50%;
+  border: 2px solid white;
+  transition: all 0.3s;
+  box-shadow: 0px 0px 5px white;
+}
+.bar1::before {
+  transform: translateX(-4px);
+}
+.bar2::before {
+  transform: translateX(4px);
+}
+.settings-btn:hover .bar1::before {
+  transform: translateX(4px);
+}
+.settings-btn:hover .bar2::before {
+  transform: translateX(-4px);
+}
+
 
 .instance-popup {
     position: absolute;
@@ -334,6 +563,15 @@
     justify-content: center;
     text-align: center;
 }
+.fade-in {
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.fade-in-active {
+    opacity: 1;
+}
+
 
 .instances-tab {
     position: relative;

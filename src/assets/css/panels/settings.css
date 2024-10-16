@@ -27,7 +27,7 @@
 }
 
 .nav-box #save {
-    border: solid 4px var(--background-element);
+    border: solid 2px var(--background-element);
     margin: 3rem;
 }
 
@@ -41,6 +41,61 @@
     margin: 0.5rem 0;
     cursor: pointer;
 }
+/* From Uiverse.io by nikk7007 */ 
+.nav-settings-btn {
+    --color: #ffffff;
+    padding: 0.8em 1.7em;
+    background-color: transparent;
+    border-radius: .3em;
+    position: relative;
+    overflow: hidden;
+    cursor: pointer;
+    transition: .5s;
+    font-weight: 400;
+    font-size: 17px;
+    border: 1px solid;
+    font-family: inherit;
+    text-transform: uppercase;
+    color: var(--color);
+    z-index: 1;
+   }
+   
+   .nav-settings-btn::before, .nav-settings-btn::after {
+    content: '';
+    display: block;
+    width: 50px;
+    height: 50px;
+    transform: translate(-50%, -50%);
+    position: absolute;
+    border-radius: 50%;
+    z-index: -1;
+    background-color: var(--color);
+    transition: 1s ease;
+   }
+   
+   .nav-settings-btn::before {
+    top: -1em;
+    left: -1em;
+   }
+   
+   .nav-settings-btn::after {
+    left: calc(100% + 1em);
+    top: calc(100% + 1em);
+   }
+   
+   .nav-settings-btn:hover::before, .nav-settings-btn:hover::after {
+    height: 410px;
+    width: 410px;
+   }
+   
+   .nav-settings-btn:hover {
+    color: rgb(10, 25, 30);
+   }
+   
+   .nav-settings-btn:active {
+    filter: brightness(.8);
+   }
+   
 
 .active-settings-BTN {
     background: var(--element-color);

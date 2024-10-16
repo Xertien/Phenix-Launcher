@@ -142,59 +142,76 @@ class Home {
         }
 
         instancePopup.addEventListener('click', async e => {
-            let configClient = await this.db.readData('configClient')
-
+            let configClient = await this.db.readData('configClient');
+    
             if (e.target.classList.contains('instance-elements')) {
-                let newInstanceSelect = e.target.id
-                let activeInstanceSelect = document.querySelector('.active-instance')
-
+                let newInstanceSelect = e.target.id;
+                let activeInstanceSelect = document.querySelector('.active-instance');
+    
                 if (activeInstanceSelect) activeInstanceSelect.classList.toggle('active-instance');
                 e.target.classList.add('active-instance');
-
-                configClient.instance_selct = newInstanceSelect
-                await this.db.updateData('configClient', configClient)
-                instanceSelect = instancesList.filter(i => i.name == newInstanceSelect)
-                instancePopup.style.display = 'none'
-                let instance = await config.getInstanceList()
-                let options = instance.find(i => i.name == configClient.instance_selct)
-                await setStatus(options.status)
+    
+                configClient.instance_selct = newInstanceSelect;
+                await this.db.updateData('configClient', configClient);
+                instanceSelect = instancesList.filter(i => i.name == newInstanceSelect);
+    
+                instancePopup.classList.remove('fade-in-active');
+                setTimeout(() => {
+                    instancePopup.style.display = 'none';
+                    instancePopup.classList.remove('fade-in');
+                }, 500);
+    
+                let instance = await config.getInstanceList();
+                let options = instance.find(i => i.name == configClient.instance_selct);
+                await setStatus(options.status);
             }
-        })
+        });
 
         instanceBTN.addEventListener('click', async e => {
-            let configClient = await this.db.readData('configClient')
-            let instanceSelect = configClient.instance_selct
-            let auth = await this.db.readData('accounts', configClient.account_selected)
-
+            let configClient = await this.db.readData('configClient');
+            let instanceSelect = configClient.instance_selct;
+            let auth = await this.db.readData('accounts', configClient.account_selected);
+    
             if (e.target.classList.contains('instance-select')) {
-                instancesListPopup.innerHTML = ''
+                instancesListPopup.innerHTML = '';
                 for (let instance of instancesList) {
                     if (instance.whitelistActive) {
                         instance.whitelist.map(whitelist => {
                             if (whitelist == auth?.name) {
                                 if (instance.name == instanceSelect) {
-                                    instancesListPopup.innerHTML += `<div id="${instance.name}" class="instance-elements active-instance">${instance.name}</div>`
+                                    instancesListPopup.innerHTML += `<div id="${instance.name}" class="instance-elements active-instance">${instance.name}</div>`;
                                 } else {
-                                    instancesListPopup.innerHTML += `<div id="${instance.name}" class="instance-elements">${instance.name}</div>`
+                                    instancesListPopup.innerHTML += `<div id="${instance.name}" class="instance-elements">${instance.name}</div>`;
                                 }
                             }
-                        })
+                        });
                     } else {
                         if (instance.name == instanceSelect) {
-                            instancesListPopup.innerHTML += `<div id="${instance.name}" class="instance-elements active-instance">${instance.name}</div>`
+                            instancesListPopup.innerHTML += `<div id="${instance.name}" class="instance-elements active-instance">${instance.name}</div>`;
                         } else {
-                            instancesListPopup.innerHTML += `<div id="${instance.name}" class="instance-elements">${instance.name}</div>`
+                            instancesListPopup.innerHTML += `<div id="${instance.name}" class="instance-elements">${instance.name}</div>`;
                         }
                     }
                 }
-
-                instancePopup.style.display = 'flex'
+    
+                instancePopup.classList.add('fade-in');
+                instancePopup.style.display = 'flex';
+    
+                setTimeout(() => {
+                    instancePopup.classList.add('fade-in-active');
+                }, 10);
             }
-
-            if (!e.target.classList.contains('instance-select')) this.startGame()
-        })
-
-        instanceCloseBTN.addEventListener('click', () => instancePopup.style.display = 'none')
+    
+            if (!e.target.classList.contains('instance-select')) this.startGame();
+        });
+    
+        instanceCloseBTN.addEventListener('click', () => {
+            instancePopup.classList.remove('fade-in-active');
+            setTimeout(() => {
+                instancePopup.style.display = 'none';
+                instancePopup.classList.remove('fade-in');
+            }, 500);
+        });
     }
 
     async startGame() {
@@ -256,7 +273,7 @@ class Home {
         });
 
         launch.on('progress', (progress, size) => {
-            infoStarting.innerHTML = `Téléchargement ${((progress / size) * 100).toFixed(0)}%`
+            infoStarting.innerHTML = `${((progress / size) * 100).toFixed(0)}%`
             ipcRenderer.send('main-window-progress', { progress, size })
             progressBar.value = progress;
             progressBar.max = size;
