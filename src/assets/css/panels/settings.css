@@ -183,6 +183,30 @@
     height: calc(100px - 8px);
     margin: 1rem;
     border-radius: 15px;
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.2s ease-in-out;
+}
+
+.account:hover {
+    transform: scale(1.05);
+}
+
+#add::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 100%;
+    background-color: var(--color);
+    opacity: 0;
+    transition: opacity 250ms;
+    z-index: -1;
+}
+
+#add:hover::before {
+    opacity: 0.2;
 }
 
 .account-select {
@@ -254,11 +278,36 @@
     align-items: center;
     color: #ff2c2c;
     cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.2s ease-in-out;
+}
+
+.delete-profile:hover {
+    transform: scale(1.05);
+}
+
+.delete-profile::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 100%;
+    background-color: rgba(255, 44, 44, 0.5);
+    opacity: 0;
+    transition: opacity 250ms ease;
+    z-index: -1;
+}
+
+.delete-profile:hover::before {
+    opacity: 0.4;
 }
 
 .delete-profile-icon {
     pointer-events: none;
 }
+
 
 /*******************************************************************************
  *                                                                             *
@@ -360,7 +409,19 @@
     border-radius: 15px;
     margin: 0 1rem;
     cursor: pointer;
+    position: relative;
+    transition: transform 0.2s ease, background-color 0.2s ease;
 }
+
+.java-path-btn:hover {
+    transform: scale(1.05);
+    background: var(--hover-color-secondary);
+}
+
+.java-path-btn:hover {
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
 
 /*******************************************************************************
  *                                                                             *
@@ -380,6 +441,12 @@
     border-radius: 15px;
     text-align: center;
     width: 6rem;
+    transition: background-color 0.2s ease;
+}
+
+.input-resolution:focus {
+    background: rgba(255, 255, 255, 0.2);
+    outline: none;
 }
 
 .size-cross {
@@ -397,7 +464,19 @@
     border-radius: 15px;
     margin: 0 1rem;
     cursor: pointer;
+    position: relative;
+    transition: transform 0.2s ease, background-color 0.2s ease;
 }
+
+.size-btn:hover {
+    transform: scale(1.05);
+    background: var(--hover-color-secondary);
+}
+
+.size-btn:hover {
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
 
 /*******************************************************************************
  *                                                                             *
@@ -414,6 +493,17 @@
     text-align: center;
     width: 4rem;
     margin-right: 1rem;
+    transition: background-color 0.2s ease;
+}
+
+.input-max-files:focus {
+    background: rgba(255, 255, 255, 0.2);
+    outline: none;
+}
+
+
+.input-max-files:active {
+    background: rgba(255, 255, 255, 0.4);
 }
 
 .max-files-btn {
@@ -422,19 +512,45 @@
     border-radius: 15px;
     margin: 0 1rem;
     cursor: pointer;
+    position: relative;
+    transition: transform 0.2s ease, background-color 0.2s ease;
 }
+
+.max-files-btn:hover {
+    transform: scale(1.05);
+    background: var(--hover-color-secondary);
+}
+
+.max-files-btn:hover {
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
 
 .theme-btn {
     margin: 0 1rem;
     padding: calc(0.1rem + 4px) calc(1.5rem + 4px);
     border-radius: 15px;
     cursor: pointer;
+    position: relative;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
+
+.theme-btn:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 10px rgba(255, 255, 255, 0.3);
+    background-color: rgba(255, 255, 255, 0.041);
+}
+
 
 .theme-btn-clair {
     background: var(--light-color);
     color: var(--dark-color);
     border: 2px solid var(--dark-color);
+}
+.theme-btn-clair:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 10px rgba(83, 73, 73, 0.3);
+    background-color: rgb(255, 255, 255);
 }
 
 .theme-btn-sombre {

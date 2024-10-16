@@ -1,7 +1,7 @@
-# ORIGINAL AUTHOR Luuxis Selvania launcher
+# ORIGINAL AUTHOR Luuxis (Selvania launcher)
 ### https://github.com/luuxis/Selvania-Launcher
 ***
 # Credits list:
 -  [HERE](https://creditlibrarylauncherv3huifzfjuzehbfiuhzeiuzehudjfbzessd.phe-go.com/)
 ### Fix Mineur
-- [ ] Regler le probleme de hitbox du bouton launch
+- [ ] Fix hitbox launch button on home tab
