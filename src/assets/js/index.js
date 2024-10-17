@@ -30,9 +30,15 @@ class Splash {
 
     async startAnimation() {
         let splashes = [
-            { "message": "Je... vie...", "author": "Luuxis" },
-            { "message": "Salut je suis du code.", "author": "Luuxis" },
-            { "message": "Linux n'est pas un os, mais un kernel.", "author": "Luuxis" }
+            {"message": "NNCT <3", "author": "Xertien"},
+            {"message": "Un launcher ma foi", "author": "Xertien"},
+            {"message": "La terre est plate... J'rigole elle est triangulaire", "author": "Illuminati"},
+            {"message": "Pensez-vous qu'un jour les poules auront des dents ?", "author": "Xertien"},
+            {"message": "Le saviez-vous, la Terre a un diamètre de 12 742 km", "author": "Wikipedia"},
+            {"message": "Les arcs-en-ciel, c'est de quelles couleurs ?", "author": "Ungolmonpercher"},
+            {"message": "Dans les années 1980, certains économistes pensent que l'argent de la drogue aurait aidé à stabiliser l'inek0nomie américaine en pleine crise !", "author": "UnRandom"},
+            {"message": "Hébergé par Phenix Hosting, setup par Xertien", "author": "NNTC"},
+            {"message": "J'aurais bien vanné Kim mais trop peur d'avoir des problèmes", "author": "Unmecpasdrole"}
         ];
         let splash = splashes[Math.floor(Math.random() * splashes.length)];
         this.splashMessage.textContent = splash.message;
