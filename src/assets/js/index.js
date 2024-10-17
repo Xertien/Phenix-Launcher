@@ -36,7 +36,6 @@ class Splash {
             {"message": "Pensez-vous qu'un jour les poules auront des dents ?", "author": "Xertien"},
             {"message": "Le saviez-vous, la Terre a un diamètre de 12 742 km", "author": "Wikipedia"},
             {"message": "Les arcs-en-ciel, c'est de quelles couleurs ?", "author": "Ungolmonpercher"},
-            {"message": "Dans les années 1980, certains économistes pensent que l'argent de la drogue aurait aidé à stabiliser l'inek0nomie américaine en pleine crise !", "author": "UnRandom"},
             {"message": "Hébergé par Phenix Hosting, setup par Xertien", "author": "NNTC"},
             {"message": "J'aurais bien vanné Kim mais trop peur d'avoir des problèmes", "author": "Unmecpasdrole"}
         ];
