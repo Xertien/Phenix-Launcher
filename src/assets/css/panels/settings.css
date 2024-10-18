@@ -340,9 +340,14 @@
     height: 10px;
     background: #bbb;
     border: 4px solid var(--element-color);
-    transition: background-color .2s, border .2s;
+    transition: background-color .2s, border .2s, transform .2s ease;
     border-radius: 18px;
     cursor: pointer;
+}
+
+.slider-touch-left span:active,
+.slider-touch-right span:active {
+    transform: scale(1.5);
 }
 
 .slider-touch-left span:after,
@@ -577,6 +582,13 @@
     border-radius: 15px;
     padding: 1rem;
     cursor: pointer;
+    transition: transform 0.3s ease, background-color 0.3s ease, filter 0.3s ease;
+}
+
+.close-btn:hover {
+    transform: scale(1.1);
+    background-color: rgba(255, 255, 255, 0.2);
+    filter: brightness(1.2);
 }
 
 .active-close {

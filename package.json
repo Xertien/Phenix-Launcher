@@ -1,7 +1,7 @@
 {
     "name": "Phenix-Launcher",
     "preductname": "Phénix Launcher",
-    "version": "3.0.1",
+    "version": "3.0.2",
     "description": "Phénix moddé v3 launcher",
     "main": "src/app.js",
     "author": {
@@ -12,6 +12,7 @@
     "url": "https://launchermodded.phe-go.com",
     "scripts": {
         "start": "cross-env-shell NODE_ENV=dev electron .",
+        "start-menu-test": "electron .",
         "dev": "cross-env-shell DEV_TOOL=open nodemon --exec npm start",
         "build": "node build.js --obf=true --build=platform",
         "icon": "node build.js --icon=https://raw.githubusercontent.com/Xertien/Phenix-Launcher/refs/heads/master/src/assets/images/icon.png"
