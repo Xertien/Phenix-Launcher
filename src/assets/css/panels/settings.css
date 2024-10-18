@@ -582,6 +582,13 @@
     border-radius: 15px;
     padding: 1rem;
     cursor: pointer;
+    transition: transform 0.3s ease, background-color 0.3s ease, filter 0.3s ease;
+}
+
+.close-btn:hover {
+    transform: scale(1.1);
+    background-color: rgba(255, 255, 255, 0.2);
+    filter: brightness(1.2);
 }
 
 .active-close {
