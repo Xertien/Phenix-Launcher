@@ -340,9 +340,14 @@
     height: 10px;
     background: #bbb;
     border: 4px solid var(--element-color);
-    transition: background-color .2s, border .2s;
+    transition: background-color .2s, border .2s, transform .2s ease;
     border-radius: 18px;
     cursor: pointer;
+}
+
+.slider-touch-left span:active,
+.slider-touch-right span:active {
+    transform: scale(1.5);
 }
 
 .slider-touch-left span:after,
