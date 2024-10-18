@@ -6,11 +6,4 @@
 ### Fix Mineur
 - [ ] Fix hitbox launch button on home tab
 
-![GitHub Release](https://img.shields.io/github/v/release/Xertien/Phenix-Launcher?style=flat-square)
-
- Plateforme | Fichier |
-| -------- | ---- |
-| Windows x64 | `Selvania-Launcher-win-x64.exe ` |
-| macOS x64 | `Selvania-Launcher-mac-x64.dmg` |
-| macOS arm64 | `Selvania-Launcher-mac-arm64.dmg` |
-| Linux x64 | `Selvania-Launcher-linux-x86_64.AppImage` |
+![GitHub Release](https://img.shields.io/github/v/release/Xertien/Phenix-Launcher?style=flat-square) [![Launcher Build](https://github.com/Xertien/Phenix-Launcher/actions/workflows/build.yml/badge.svg)](https://github.com/Xertien/Phenix-Launcher/actions/workflows/build.yml)
