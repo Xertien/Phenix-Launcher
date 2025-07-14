@@ -46,14 +46,14 @@
     --color: #ffffff;
     padding: 0.8em 1.7em;
     background-color: transparent;
-    border-radius: .3em;
+    border-radius: 10px;
     position: relative;
     overflow: hidden;
     cursor: pointer;
-    transition: .5s;
+    transition: .3s;
     font-weight: 400;
     font-size: 17px;
-    border: 1px solid;
+    border: solid 2px var(--gray-border-color);
     font-family: inherit;
     text-transform: uppercase;
     color: var(--color);
@@ -70,7 +70,7 @@
     border-radius: 50%;
     z-index: -1;
     background-color: var(--color);
-    transition: 1s ease;
+    transition: 0.7s ease;
    }
    
    .nav-settings-btn::before {

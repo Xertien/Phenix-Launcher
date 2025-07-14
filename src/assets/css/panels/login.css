@@ -27,20 +27,59 @@
 
 .connect,
 .cancel {
-  background: #ff0000;
+  background: none;
   color: var(--color);
-  border: none;
+  border: solid 2px var(--gray-border-color);
   border-radius: 10px;
   padding: 0.3rem 4rem;
   font-size: inherit;
   font-weight: bold;
   margin: 15px 10px;
-  transition: transform 0.3s ease, border 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+  transition: .3s;
+  font-family: inherit;
+  text-transform: uppercase;
+  z-index: 1;
 }
 
-.cancel:hover {
-  transform: scale(1.1);
-  border: 2px solid white;
+.connect::before, .cancel::before,
+.connect::after, .cancel::after {
+    content: '';
+    display: block;
+    width: 50px;
+    height: 50px;
+    transform: translate(-50%, -50%);
+    position: absolute;
+    border-radius: 50%;
+    z-index: -1;
+    background-color: var(--color);
+    transition: 0.7s ease;
+}
+
+.connect::before, .cancel::before {
+    top: -1em;
+    left: -1em;
+}
+
+.connect::after, .cancel::after {
+    left: calc(100% + 1em);
+    top: calc(100% + 1em);
+}
+
+.connect:hover::before, .cancel:hover::before,
+.connect:hover::after, .cancel:hover::after {
+    height: 410px;
+    width: 410px;
+}
+
+.connect:hover, .cancel:hover {
+    color: rgb(10, 25, 30);
+}
+
+.connect:active, .cancel:active {
+    filter: brightness(.8);
 }
 
 .input-login .email,
@@ -48,67 +87,14 @@
 .A2F {
     color: var(--color);
     background: none;
-    border: solid 2px var(--element-color);
-    border-radius: 30px;
+    border: solid 1px var(--gray-border-color);
+    border-radius: 15px;
     width: 50%;
     padding: 0.4rem 1rem;
     margin-top: 10px;
 }
-/* From Uiverse.io by adamgiebl */ 
-.cssbuttons-io-button {
-    background: #0000;
-    color: white;
-    font-family: inherit;
-    padding: 0.35em;
-    padding-left: 1.2em;
-    font-size: 17px;
-    font-weight: 500;
-    border-radius: 0.9em;
-    border: none;
-    letter-spacing: 0.05em;
-    display: flex;
-    align-items: center;
-    box-shadow: inset 0 0 1.6em -0.6em #714da6;
-    overflow: hidden;
-    position: relative;
-    height: 2.8em;
-    padding-right: 3.3em;
-    cursor: pointer;
-  }
-  
-  .cssbuttons-io-button .icon {
-    background: white;
-    margin-left: 1em;
-    position: absolute;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: 2.2em;
-    width: 2.2em;
-    border-radius: 0.7em;
-    box-shadow: 0.1em 0.1em 0.6em 0.2em #7b52b9;
-    right: 0.3em;
-    transition: all 0.3s;
-  }
-  
-  .cssbuttons-io-button:hover .icon {
-    width: calc(100% - 0.6em);
-  }
-  
-  .cssbuttons-io-button .icon svg {
-    width: 1.1em;
-    transition: transform 0.3s;
-    color: #7b52b9;
-  }
-  
-  .cssbuttons-io-button:hover .icon svg {
-    transform: translateX(0.1em);
-  }
-  
-  .cssbuttons-io-button:active .icon {
-    transform: scale(0.95);
-  }
-  .button-container {
+
+.button-container {
     display: flex;
     justify-content: center;
     align-items: center;

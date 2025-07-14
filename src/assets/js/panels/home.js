@@ -110,10 +110,14 @@ class Home {
         let instancePopup = document.querySelector('.instance-popup')
         let instancesListPopup = document.querySelector('.instances-List')
         let instanceCloseBTN = document.querySelector('.close-popup')
+        let instanceCountText = document.querySelector('#instance-count-text');
 
         if (instancesList.length === 1) {
             document.querySelector('.instance-select').style.display = 'none'
             instanceBTN.style.paddingRight = '0'
+            instanceCountText.innerText = 'Instance';
+        } else {
+            instanceCountText.innerText = 'Instances';
         }
 
         if (!instanceSelect) {
