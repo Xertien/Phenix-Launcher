@@ -147,24 +147,24 @@ class Home {
 
         instancePopup.addEventListener('click', async e => {
             let configClient = await this.db.readData('configClient');
-    
+
             if (e.target.classList.contains('instance-elements')) {
                 let newInstanceSelect = e.target.id;
                 let activeInstanceSelect = document.querySelector('.active-instance');
-    
+
                 if (activeInstanceSelect) activeInstanceSelect.classList.toggle('active-instance');
                 e.target.classList.add('active-instance');
-    
+
                 configClient.instance_selct = newInstanceSelect;
                 await this.db.updateData('configClient', configClient);
                 instanceSelect = instancesList.filter(i => i.name == newInstanceSelect);
-    
+
                 instancePopup.classList.remove('fade-in-active');
                 setTimeout(() => {
                     instancePopup.style.display = 'none';
                     instancePopup.classList.remove('fade-in');
                 }, 500);
-    
+
                 let instance = await config.getInstanceList();
                 let options = instance.find(i => i.name == configClient.instance_selct);
                 await setStatus(options.status);
@@ -175,7 +175,7 @@ class Home {
             let configClient = await this.db.readData('configClient');
             let instanceSelect = configClient.instance_selct;
             let auth = await this.db.readData('accounts', configClient.account_selected);
-    
+
             if (e.target.classList.contains('instance-select')) {
                 instancesListPopup.innerHTML = '';
                 for (let instance of instancesList) {
@@ -197,18 +197,18 @@ class Home {
                         }
                     }
                 }
-    
+
                 instancePopup.classList.add('fade-in');
                 instancePopup.style.display = 'flex';
-    
+
                 setTimeout(() => {
                     instancePopup.classList.add('fade-in-active');
                 }, 10);
             }
-    
+
             if (!e.target.classList.contains('instance-select')) this.startGame();
         });
-    
+
         instanceCloseBTN.addEventListener('click', () => {
             instancePopup.classList.remove('fade-in-active');
             setTimeout(() => {
@@ -224,6 +224,28 @@ class Home {
         let instance = await config.getInstanceList()
         let authenticator = await this.db.readData('accounts', configClient.account_selected)
         let options = instance.find(i => i.name == configClient.instance_selct)
+
+        if (!authenticator || !authenticator.meta || !authenticator.meta.type) {
+            let popupError = new popup()
+            popupError.openPopup({
+                title: 'Erreur',
+                content: 'Aucun compte valide sélectionné. Veuillez vous reconnecter.',
+                color: 'red',
+                options: true
+            })
+            return changePanel('login');
+        }
+
+        if (!options) {
+            let popupError = new popup()
+            popupError.openPopup({
+                title: 'Erreur',
+                content: 'Aucune instance sélectionnée.',
+                color: 'red',
+                options: true
+            })
+            return;
+        }
 
         let playInstanceBTN = document.querySelector('.play-instance')
         let infoStartingBOX = document.querySelector('.info-starting-game')
