@@ -37,24 +37,56 @@ class database {
 
     async readData(tableName, key = 1) {
         let table = await this.getDatabase(tableName);
-        let data = await nodedatabase.getDataById(table, key)
-        if (data) {
-            let id = data.id
-            data = JSON.parse(data.json_data)
-            data.ID = id
+        try {
+            let data = await nodedatabase.getDataById(table, key)
+            if (data) {
+                let id = data.id
+                data = JSON.parse(data.json_data)
+                data.ID = id
+            }
+            return data ? data : undefined
+        } catch (error) {
+            console.error(`[Database] Error reading data from ${tableName}:`, error);
+            try {
+                await nodedatabase.deleteData(table, key);
+                console.warn(`[Database] Corrupted entry deleted from ${tableName}`);
+            } catch (e) { }
+            return undefined
         }
-        return data ? data : undefined
     }
 
     async readAllData(tableName) {
         let table = await this.getDatabase(tableName);
-        let data = await nodedatabase.getAllData(table)
-        return data.map(info => {
-            let id = info.id
-            info = JSON.parse(info.json_data)
-            info.ID = id
-            return info
-        })
+        try {
+            let data = await nodedatabase.getAllData(table)
+            let validData = [];
+            let corruptedIds = [];
+
+            for (let info of data) {
+                try {
+                    let id = info.id
+                    let parsed = JSON.parse(info.json_data)
+                    parsed.ID = id
+                    validData.push(parsed)
+                } catch (parseError) {
+                    console.error(`[Database] Corrupted entry in ${tableName}:`, info.id);
+                    corruptedIds.push(info.id);
+                }
+            }
+
+            // Auto-clean corrupted entries
+            for (let id of corruptedIds) {
+                try {
+                    await nodedatabase.deleteData(table, id);
+                    console.warn(`[Database] Deleted corrupted entry ${id} from ${tableName}`);
+                } catch (e) { }
+            }
+
+            return validData;
+        } catch (error) {
+            console.error(`[Database] Error reading all data from ${tableName}:`, error);
+            return [];
+        }
     }
 
     async updateData(tableName, data, key = 1) {

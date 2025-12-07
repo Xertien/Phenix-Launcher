@@ -128,6 +128,9 @@ class Launcher {
 
     async startLauncher() {
         let accounts = await this.db.readAllData('accounts')
+        accounts = accounts.filter(acc =>
+            acc && acc.ID && acc.meta && acc.name
+        );
         let configClient = await this.db.readData('configClient')
         let account_selected = configClient ? configClient.account_selected : null
         let popupRefresh = new popup();
@@ -239,8 +242,8 @@ class Launcher {
             account_selected = configClient ? configClient.account_selected : null
 
             if (!account_selected) {
-                let uuid = accounts[0].ID
-                if (uuid) {
+                if (accounts.length > 0 && accounts[0]?.ID) {
+                    let uuid = accounts[0].ID
                     configClient.account_selected = uuid
                     await this.db.updateData('configClient', configClient)
                     accountSelect(uuid)
