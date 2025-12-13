@@ -127,3 +127,23 @@ img {
     background-color: var(--element-color);
     border-radius: 10px;
 }
+
+.loader {
+    width: 28px;
+    height: 28px;
+    border: 3px solid rgba(124, 77, 255, 0.3);
+    border-top: 3px solid var(--element-color);
+    border-radius: 50%;
+    animation: loader-spin 1s linear infinite;
+    margin: 10px auto;
+}
+
+@keyframes loader-spin {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}

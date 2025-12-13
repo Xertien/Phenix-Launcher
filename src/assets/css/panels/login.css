@@ -1,126 +1,177 @@
 .login .container {
     display: flex;
+    height: 100%;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
-    height: 100%;
+    padding: 20px;
+    box-sizing: border-box;
 }
 
 .login-tabs {
-    position: absolute;
-    padding: 15px;
-    background: var(--background);
-    border-radius: 15px;
-    text-align: center;
-    min-width: 40%;
-}
-
-.login-home,
-.login-offline,
-.login-AZauth,
-.login-AZauth-A2F {
     display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 30px;
+    padding: 40px;
+    background: rgba(30, 30, 40, 0.8);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-radius: 24px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+    max-width: 450px;
+    width: 100%;
 }
 
 .login-text {
-    font-size: 1.3rem;
-}
-
-.connect,
-.cancel {
-  background: none;
-  color: var(--color);
-  border: solid 2px var(--gray-border-color);
-  border-radius: 10px;
-  padding: 0.3rem 4rem;
-  font-size: inherit;
-  font-weight: bold;
-  margin: 15px 10px;
-  position: relative;
-  overflow: hidden;
-  cursor: pointer;
-  transition: .3s;
-  font-family: inherit;
-  text-transform: uppercase;
-  z-index: 1;
-}
-
-.connect::before, .cancel::before,
-.connect::after, .cancel::after {
-    content: '';
-    display: block;
-    width: 50px;
-    height: 50px;
-    transform: translate(-50%, -50%);
-    position: absolute;
-    border-radius: 50%;
-    z-index: -1;
-    background-color: var(--color);
-    transition: 0.7s ease;
-}
-
-.connect::before, .cancel::before {
-    top: -1em;
-    left: -1em;
-}
-
-.connect::after, .cancel::after {
-    left: calc(100% + 1em);
-    top: calc(100% + 1em);
-}
-
-.connect:hover::before, .cancel:hover::before,
-.connect:hover::after, .cancel:hover::after {
-    height: 410px;
-    width: 410px;
-}
-
-.connect:hover, .cancel:hover {
-    color: rgb(10, 25, 30);
-}
-
-.connect:active, .cancel:active {
-    filter: brightness(.8);
-}
-
-.input-login .email,
-.input-login .password,
-.A2F {
+    font-size: 1.4rem;
+    font-weight: 700;
     color: var(--color);
-    background: none;
-    border: solid 1px var(--gray-border-color);
-    border-radius: 15px;
-    width: 50%;
-    padding: 0.4rem 1rem;
-    margin-top: 10px;
+    text-align: center;
+    letter-spacing: 0.5px;
+    margin-bottom: 20px;
+}
+
+.login-options {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    width: 100%;
 }
 
 .button-container {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 10vh;
+    width: 100%;
 }
-.popup-content {
+
+.connect {
+    width: 100%;
+    padding: 16px 32px;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: white;
+    background: linear-gradient(135deg, var(--element-color) 0%, #6200ea 100%);
+    border: none;
+    border-radius: 50px;
+    box-shadow: 0 8px 32px rgba(124, 77, 255, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.3);
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+}
+
+.connect::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(rgba(255, 255, 255, 0.1), transparent);
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+.connect:hover {
+    transform: scale(1.03) translateY(-3px);
+    box-shadow: 0 12px 40px rgba(124, 77, 255, 0.7), inset 0 1px 1px rgba(255, 255, 255, 0.4);
+}
+
+.connect:hover::before {
+    opacity: 1;
+}
+
+.connect:active {
+    transform: scale(0.98) translateY(0);
+    box-shadow: 0 4px 16px rgba(124, 77, 255, 0.4);
+}
+
+.cancel {
+    width: 100%;
+    padding: 14px 28px;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--color);
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 50px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.cancel:hover {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: rgba(255, 255, 255, 0.3);
+    transform: translateY(-2px);
+}
+
+.input-login {
     display: flex;
     flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    height: 100%;
+    gap: 15px;
+    width: 100%;
 }
 
-.loader {
-    border: 4px solid rgba(255, 255, 255, 0.3);
-    border-top: 4px solid var(--color);
-    border-radius: 50%;
-    width: 30px;
-    height: 30px;
-    animation: spin 1s linear infinite;
+.input-login input {
+    width: 100%;
+    padding: 16px 20px;
+    font-size: 1rem;
+    color: var(--color);
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    outline: none;
+    transition: all 0.3s ease;
+    box-sizing: border-box;
 }
 
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+.input-login input::placeholder {
+    color: rgba(255, 255, 255, 0.4);
 }
 
+.input-login input:focus {
+    border-color: var(--element-color);
+    background: rgba(0, 0, 0, 0.5);
+    box-shadow: 0 0 0 3px rgba(124, 77, 255, 0.15);
+}
 
-  
+.light .login-tabs {
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+}
+
+.light .login-text {
+    color: #1a1a1a;
+}
+
+.light .cancel {
+    color: #333;
+    background: rgba(0, 0, 0, 0.05);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.light .cancel:hover {
+    background: rgba(0, 0, 0, 0.1);
+}
+
+.light .input-login input {
+    color: #1a1a1a;
+    background: rgba(0, 0, 0, 0.03);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.light .input-login input::placeholder {
+    color: rgba(0, 0, 0, 0.4);
+}
+
+.light .input-login input:focus {
+    border-color: var(--element-color);
+    background: rgba(0, 0, 0, 0.05);
+}

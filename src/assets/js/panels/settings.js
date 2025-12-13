@@ -42,6 +42,10 @@ class Settings {
 
                 if (activeContainerSettings) activeContainerSettings.classList.toggle('active-container-settings');
                 document.querySelector(`#${id}-tab`).classList.add('active-container-settings');
+
+                if (id === 'java' && !this.sliderInitialized) {
+                    setTimeout(() => this.ram(), 50);
+                }
             }
         })
     }
@@ -59,8 +63,47 @@ class Settings {
                     })
 
                     if (id == 'add') {
-                        document.querySelector('.cancel-home').style.display = 'inline'
-                        return changePanel('login')
+                        popupAccount.openPopup({
+                            title: 'Connexion Microsoft...',
+                            content: '<div class="loader"></div>',
+                            color: 'var(--color)'
+                        });
+
+                        try {
+                            const account_connect = await ipcRenderer.invoke('Microsoft-window', this.config.client_id);
+
+                            if (account_connect === 'cancel' || !account_connect) {
+                                popupAccount.closePopup();
+                                return;
+                            } else if (account_connect.error) {
+                                popupAccount.openPopup({
+                                    title: 'Erreur Microsoft',
+                                    content: `${account_connect.error}: ${account_connect.errorMessage || 'Erreur inconnue'}`,
+                                    color: 'red',
+                                    options: true
+                                });
+                                return;
+                            }
+
+                            let configClient = await this.db.readData('configClient');
+                            let account = await this.db.createData('accounts', account_connect);
+                            configClient.account_selected = account.ID;
+                            await this.db.updateData('configClient', configClient);
+
+                            const { addAccount } = await import('../utils.js');
+                            await addAccount(account);
+                            await accountSelect(account);
+
+                            popupAccount.closePopup();
+                        } catch (err) {
+                            console.error('[Settings] Microsoft auth error:', err);
+                            popupAccount.openPopup({
+                                title: 'Erreur',
+                                content: err.toString(),
+                                options: true
+                            });
+                        }
+                        return;
                     }
 
                     let account = await this.db.readData('accounts', id);
@@ -79,7 +122,7 @@ class Settings {
                     await this.db.deleteData('accounts', id);
                     let deleteProfile = document.getElementById(`${id}`);
                     let accountListElement = document.querySelector('.accounts-list');
-                    accountListElement.removeChild(deleteProfile);
+                    if (deleteProfile) deleteProfile.remove();
 
                     if (accountListElement.children.length == 1) return changePanel('login');
 
@@ -133,6 +176,10 @@ class Settings {
         let sliderDiv = document.querySelector(".memory-slider");
         sliderDiv.setAttribute("max", Math.trunc((80 * totalMem) / 100));
 
+        if (sliderDiv.offsetWidth === 0) {
+            return;
+        }
+
         let ram = config?.java_config?.java_memory ? {
             ramMin: config.java_config.java_memory.min,
             ramMax: config.java_config.java_memory.max
@@ -146,8 +193,10 @@ class Settings {
 
         let slider = new Slider(".memory-slider", parseFloat(ram.ramMin), parseFloat(ram.ramMax));
 
-        let minSpan = document.querySelector(".slider-touch-left span");
-        let maxSpan = document.querySelector(".slider-touch-right span");
+        this.sliderInitialized = true;
+
+        let minSpan = document.querySelector(".slider-touch-left");
+        let maxSpan = document.querySelector(".slider-touch-right");
 
         minSpan.setAttribute("value", `${ram.ramMin} Go`);
         maxSpan.setAttribute("value", `${ram.ramMax} Go`);

@@ -2,7 +2,7 @@
  * @author Luuxis
  * @license CC-BY-NC 4.0 - https://creativecommons.org/licenses/by-nc/4.0
  */
-import { config, database, logger, changePanel, appdata, setStatus, pkg, popup } from '../utils.js'
+import { config, database, logger, changePanel, appdata, setStatus, pkg, popup, accountSelect, skin2D } from '../utils.js'
 
 const { Launch } = require('minecraft-java-core')
 const { shell, ipcRenderer } = require('electron')
@@ -15,6 +15,7 @@ class Home {
         this.news()
         this.socialLick()
         this.instancesSelect()
+        this.playerModal()
         document.querySelector('.settings-btn').addEventListener('click', e => changePanel('settings'))
     }
 
@@ -29,7 +30,7 @@ class Home {
                     <div class="news-header">
                         <img class="server-status-icon" src="assets/images/icon.png">
                         <div class="header-text">
-                            <div class="title">Aucun news n'ai actuellement disponible.</div>
+                            <div class="title">Aucune news n'est actuellement disponible.</div>
                         </div>
                         <div class="date">
                             <div class="day">1</div>
@@ -43,27 +44,30 @@ class Home {
                     </div>`
                 newsElement.appendChild(blockNews);
             } else {
-                for (let News of news) {
-                    let date = this.getdate(News.publish_date)
+                news.sort((a, b) => new Date(b.publish_date) - new Date(a.publish_date));
+
+                for (let NewsItem of news) {
+                    let date = this.getdate(NewsItem.publish_date);
                     let blockNews = document.createElement('div');
                     blockNews.classList.add('news-block');
                     blockNews.innerHTML = `
                         <div class="news-header">
                             <img class="server-status-icon" src="assets/images/icon.png">
                             <div class="header-text">
-                                <div class="title">${News.title}</div>
+                                <div class="title">${NewsItem.title}</div>
                             </div>
                             <div class="date">
                                 <div class="day">${date.day}</div>
                                 <div class="month">${date.month}</div>
+                                <div class="year">${date.year}</div>
                             </div>
                         </div>
                         <div class="news-content">
                             <div class="bbWrapper">
-                                <p>${News.content.replace(/\n/g, '</br>')}</p>
-                                <p class="news-author">Auteur - <span>${News.author}</span></p>
+                                <p>${NewsItem.content.replace(/\n/g, '</br>')}</p>
+                                <p class="news-author">Auteur - <span>${NewsItem.author}</span></p>
                             </div>
-                        </div>`
+                        </div>`;
                     newsElement.appendChild(blockNews);
                 }
             }
@@ -98,6 +102,167 @@ class Home {
                 shell.openExternal(e.target.dataset.url)
             })
         });
+    }
+
+    setupNewsModal() {
+        let newsPopup = document.querySelector('.news-popup');
+        let closeBtn = document.querySelector('.close-news-popup');
+
+        const closeNewsModal = () => {
+            newsPopup.classList.remove('active-popup');
+            setTimeout(() => {
+                newsPopup.style.display = 'none';
+            }, 300);
+        };
+
+        if (closeBtn) {
+            closeBtn.addEventListener('click', closeNewsModal);
+        }
+
+        if (newsPopup) {
+            newsPopup.addEventListener('click', (e) => {
+                if (e.target === newsPopup) closeNewsModal();
+            });
+        }
+    }
+
+    async playerModal() {
+        let playerBtn = document.querySelector('.player-options');
+        let playerPopup = document.querySelector('.player-popup');
+        let addAccountBtn = document.getElementById('add-account-modal');
+        let closeBtn = document.querySelector('.close-player-popup');
+        let accountListContainer = document.querySelector('.accounts-list-home');
+
+        if (playerBtn) {
+            playerBtn.addEventListener('click', async () => {
+                playerPopup.style.display = 'flex';
+                requestAnimationFrame(() => {
+                    playerPopup.classList.add('active-popup');
+                });
+                await this.loadAccounts(accountListContainer);
+            });
+        }
+
+        const closePopup = () => {
+            playerPopup.classList.remove('active-popup');
+            setTimeout(() => {
+                playerPopup.style.display = 'none';
+            }, 300);
+        };
+
+        if (closeBtn) {
+            closeBtn.addEventListener('click', closePopup);
+        }
+
+        if (playerPopup) {
+            playerPopup.addEventListener('click', (e) => {
+                if (e.target === playerPopup) closePopup();
+            });
+        }
+
+        if (addAccountBtn) {
+            addAccountBtn.addEventListener('click', async () => {
+                playerPopup.classList.remove('active-popup');
+                setTimeout(() => {
+                    playerPopup.style.display = 'none';
+                }, 300);
+
+                let popupLogin = new popup();
+                popupLogin.openPopup({
+                    title: 'Connexion Microsoft...',
+                    content: '<div class="loader"></div>',
+                    color: 'var(--color)'
+                });
+
+                try {
+                    const account_connect = await ipcRenderer.invoke('Microsoft-window', this.config.client_id);
+
+                    if (account_connect === 'cancel' || !account_connect) {
+                        popupLogin.closePopup();
+                        return;
+                    } else if (account_connect.error) {
+                        popupLogin.openPopup({
+                            title: 'Erreur Microsoft',
+                            content: `${account_connect.error}: ${account_connect.errorMessage || 'Erreur inconnue'}`,
+                            color: 'red',
+                            options: true
+                        });
+                        return;
+                    }
+
+                    let configClient = await this.db.readData('configClient');
+                    let account = await this.db.createData('accounts', account_connect);
+                    configClient.account_selected = account.ID;
+                    await this.db.updateData('configClient', configClient);
+                    await addAccount(account);
+                    await accountSelect(account);
+
+                    popupLogin.closePopup();
+
+                    await this.loadAccounts(accountListContainer);
+                    playerPopup.style.display = 'flex';
+                    requestAnimationFrame(() => {
+                        playerPopup.classList.add('active-popup');
+                    });
+                } catch (err) {
+                    console.error('[Home] Microsoft auth error:', err);
+                    popupLogin.openPopup({
+                        title: 'Erreur',
+                        content: err.toString(),
+                        options: true
+                    });
+                }
+            });
+        }
+    }
+
+    async loadAccounts(container) {
+        if (!container) return;
+        container.innerHTML = '';
+        let accounts = await this.db.readAllData('accounts').catch(() => []);
+        if (!accounts) accounts = [];
+
+        if (!Array.isArray(accounts)) accounts = [accounts];
+
+        for (let account of accounts) {
+            if (!account || !account.uuid || !account.name) continue;
+
+            let skin = false;
+            if (account?.profile?.skins[0]?.base64) skin = await new skin2D().creatHeadTexture(account.profile.skins[0].base64);
+
+            let div = document.createElement("div");
+            div.classList.add("account");
+            div.id = account.ID;
+
+            div.style.padding = "10px";
+            div.style.display = "flex";
+            div.style.alignItems = "center";
+            div.style.gap = "10px";
+            div.style.background = "rgba(255,255,255,0.05)";
+            div.style.borderRadius = "8px";
+            div.style.cursor = "pointer";
+
+            div.innerHTML = `
+                <div class="profile-image" style="width:40px; height:40px; border-radius:8px; ${skin ? 'background-image: url(' + skin + ');' : ''} background-size: cover;"></div>
+                <div class="profile-infos" style="flex:1;">
+                    <div class="profile-pseudo" style="font-size:1rem; font-weight:700;">${account.name}</div>
+                    <div class="profile-uuid" style="font-size:0.7rem; opacity:0.7;">${account.uuid}</div>
+                </div>
+            `;
+
+            div.addEventListener('click', async () => {
+                let configClient = await this.db.readData('configClient');
+                await accountSelect(account);
+                configClient.account_selected = account.ID;
+                await this.db.updateData('configClient', configClient);
+
+                document.querySelector('.player-popup').style.display = 'none';
+
+                this.instancesSelect();
+            });
+
+            container.appendChild(div);
+        }
     }
 
     async instancesSelect() {
@@ -247,10 +412,11 @@ class Home {
             return;
         }
 
-        let playInstanceBTN = document.querySelector('.play-instance')
-        let infoStartingBOX = document.querySelector('.info-starting-game')
-        let infoStarting = document.querySelector(".info-starting-game-text")
-        let progressBar = document.querySelector('.progress-bar')
+        let playBtn = document.querySelector('.play-btn')
+        let btnProgressFill = document.querySelector('.btn-progress-fill')
+        let btnIcon = document.querySelector('.btn-icon')
+        let btnSpinner = document.querySelector('.btn-spinner')
+        let btnText = document.querySelector('.btn-text')
 
         let opt = {
             url: options.url,
@@ -288,9 +454,10 @@ class Home {
 
         launch.Launch(opt);
 
-        playInstanceBTN.style.display = "none"
-        infoStartingBOX.style.display = "block"
-        progressBar.style.display = "";
+        playBtn.classList.add('loading')
+        btnIcon.style.display = 'none'
+        btnSpinner.style.display = 'block'
+        btnText.textContent = 'Connexion...'
         ipcRenderer.send('main-window-progress-load')
 
         launch.on('extract', extract => {
@@ -299,17 +466,17 @@ class Home {
         });
 
         launch.on('progress', (progress, size) => {
-            infoStarting.innerHTML = `${((progress / size) * 100).toFixed(0)}%`
+            let percent = ((progress / size) * 100).toFixed(0)
+            btnText.textContent = `Téléchargement ${percent}%`
+            btnProgressFill.style.width = `${percent}%`
             ipcRenderer.send('main-window-progress', { progress, size })
-            progressBar.value = progress;
-            progressBar.max = size;
         });
 
         launch.on('check', (progress, size) => {
-            infoStarting.innerHTML = `Vérification ${((progress / size) * 100).toFixed(0)}%`
+            let percent = ((progress / size) * 100).toFixed(0)
+            btnText.textContent = `Vérification ${percent}%`
+            btnProgressFill.style.width = `${percent}%`
             ipcRenderer.send('main-window-progress', { progress, size })
-            progressBar.value = progress;
-            progressBar.max = size;
         });
 
         launch.on('estimated', (time) => {
@@ -326,17 +493,17 @@ class Home {
         launch.on('patch', patch => {
             console.log(patch);
             ipcRenderer.send('main-window-progress-load')
-            infoStarting.innerHTML = `Patch en cours...`
+            btnText.textContent = `Patch en cours...`
         });
 
         launch.on('data', (e) => {
-            progressBar.style.display = "none"
+            btnText.textContent = `Démarrage...`
+            btnProgressFill.style.width = '100%'
             if (configClient.launcher_config.closeLauncher == 'close-launcher') {
                 ipcRenderer.send("main-window-hide")
             };
             new logger('Minecraft', '#36b030');
             ipcRenderer.send('main-window-progress-load')
-            infoStarting.innerHTML = `Demarrage en cours...`
             console.log(e);
         })
 
@@ -345,9 +512,11 @@ class Home {
                 ipcRenderer.send("main-window-show")
             };
             ipcRenderer.send('main-window-progress-reset')
-            infoStartingBOX.style.display = "none"
-            playInstanceBTN.style.display = "flex"
-            infoStarting.innerHTML = `Vérification`
+            playBtn.classList.remove('loading')
+            btnIcon.style.display = 'block'
+            btnSpinner.style.display = 'none'
+            btnText.textContent = 'Launch'
+            btnProgressFill.style.width = '0%'
             new logger(pkg.name, '#7289da');
             console.log('Close');
         });

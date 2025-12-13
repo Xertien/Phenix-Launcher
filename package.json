@@ -1,7 +1,7 @@
 {
     "name": "Phenix-Launcher",
     "preductname": "Phénix Launcher",
-    "version": "3.0.7",
+    "version": "3.0.8",
     "description": "Phénix moddé v3 launcher",
     "main": "src/app.js",
     "author": {

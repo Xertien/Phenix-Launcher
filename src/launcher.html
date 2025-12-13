@@ -1,27 +1,44 @@
 <html>
-    <head>
-        <meta charset="UTF-8">
-        <meta http-equiv="Content-Security-Policy" content="script-src 'self';">
-        <link rel="stylesheet" href="assets/css/launcher.css">
-    </head>
-    <body class="dfvf">
-        <div class="dragbar"></div>
-        <div class="frame">
-            <div id="minimize" class="button-frame icon-minimize"></div>
-            <div id="maximize" class="button-frame icon-maximize"></div>
-            <div id="close" class="button-frame icon-close"></div>
-        </div>
 
-        <div class="popup">
-            <div class="popup-tab">
-                <div class="popup-title"></div>
-                <div class="popup-content"></div>
-                <div class="popup-options">
-                    <button class="popup-button">OK</button>
-                </div>
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="Content-Security-Policy" content="script-src 'self';">
+    <link rel="stylesheet" href="assets/css/launcher.css">
+</head>
+
+<body class="dfvf">
+    <div class="dragbar"></div>
+    <div class="frame">
+        <div id="minimize" class="button-frame">
+            <svg xmlns="http://www.w3.org/2000/svg" height="18" viewBox="0 -960 960 960" width="18" fill="currentColor">
+                <path d="M200-440v-80h560v80H200Z" />
+            </svg>
+        </div>
+        <div id="maximize" class="button-frame">
+            <svg xmlns="http://www.w3.org/2000/svg" height="18" viewBox="0 -960 960 960" width="18" fill="currentColor">
+                <path
+                    d="M200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h560q33 0 56.5 23.5T840-760v560q0 33-23.5 56.5T760-120H200Zm0-80h560v-560H200v560Z" />
+            </svg>
+        </div>
+        <div id="close" class="button-frame">
+            <svg xmlns="http://www.w3.org/2000/svg" height="18" viewBox="0 -960 960 960" width="18" fill="currentColor">
+                <path
+                    d="m256-200-56-56 224-224-224-224 56-56 224 224 224-224 56 56-224 224 224 224-56 56-224-224-224 224Z" />
+            </svg>
+        </div>
+    </div>
+
+    <div class="popup">
+        <div class="popup-tab">
+            <div class="popup-title"></div>
+            <div class="popup-content"></div>
+            <div class="popup-options">
+                <button class="popup-button">OK</button>
             </div>
         </div>
-        <div class="panels"></div>
-        <script src="assets/js/launcher.js" type="module"></script>
-    </body>
+    </div>
+    <div class="panels"></div>
+    <script src="assets/js/launcher.js" type="module"></script>
+</body>
+
 </html>

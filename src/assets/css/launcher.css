@@ -5,17 +5,18 @@
 @import 'panels/settings.css';
 
 :root {
-    --hover-color-secondary: #966cd6;
+    --hover-color-secondary: #651FFF;
 }
-
 
 body {
     margin: 0;
     padding: 0;
     user-select: none;
     color: var(--color);
-    font-family: 'Poppins';
-    font-weight: bolder;
+    font-family: 'Poppins', Roboto, sans-serif;
+    font-weight: 500;
+    background-color: var(--background);
+    overflow: hidden;
 }
 
 img {
@@ -25,145 +26,192 @@ img {
 
 * {
     outline: none;
+    box-sizing: border-box;
 }
 
-input::-webkit-outer-spin-button,
-input::-webkit-inner-spin-button {
-    -webkit-appearance: none;
-    margin: 0;
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
 }
 
-.content-scroll {
-    overflow: auto;
+::-webkit-scrollbar-track {
+    background: transparent;
 }
 
-.content-scroll::-webkit-scrollbar {
-    width: 0;
+::-webkit-scrollbar-thumb {
+    background: rgba(124, 77, 255, 0.3);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--element-color);
 }
 
 .dragbar {
     position: fixed;
-    /* background: #00000080; */
     top: 0px;
     left: 0px;
     width: 100%;
-    height: 26px;
+    height: 32px;
     -webkit-app-region: drag;
-    z-index: 11;
+    z-index: 1000;
     display: none;
 }
 
 .frame {
     background: transparent;
     position: fixed;
-    display: table;
+    display: flex;
     top: 0px;
     right: 0px;
-    z-index: 11;
+    z-index: 1001;
     -webkit-app-region: no-drag;
+    padding: 4px 8px;
     display: none;
 }
 
 .hide {
-    display: block;
+    display: flex !important;
 }
 
 .button-frame {
     position: relative;
-    display: table-cell;
-    width: 30px;
-    height: 26px;
-    transition: color .2s, background-color .2s;
-    color: black;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
     cursor: pointer;
+    margin-left: 4px;
+    color: var(--color);
 }
 
-.button-frame:before {
-    position: absolute;
-    top: 6px;
-    left: 8px;
-    width: 14px;
-    height: 14px;
-    font-size: 14px;
-    color: #f8f9f9;
+.button-frame svg {
+    transition: all 0.2s ease;
 }
 
-.icon-close:hover {
-    background: #e21212;
+#close:hover {
+    background: #f44336;
+    transform: rotate(90deg);
 }
 
-.icon-minimize:hover,
-.icon-restore-down:hover,
-.icon-maximize:hover {
-    background-color: #0000009d;
+#close:hover svg {
+    fill: white;
+}
+
+#minimize:hover,
+#maximize:hover {
+    background-color: rgba(255, 255, 255, 0.1);
 }
 
 .popup {
-    position: absolute;
+    position: fixed;
+    top: 0;
+    left: 0;
     width: 100%;
     height: 100%;
-    z-index: 10;
+    z-index: 2000;
     display: none;
     flex-direction: column;
     align-items: center;
     justify-content: center;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(8px);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.popup[style*="display: flex"] {
+    opacity: 1;
 }
 
 .popup-tab {
-    width: 40%;
-    padding: 15px;
+    width: 90%;
+    max-width: 450px;
+    padding: 32px;
     background: var(--background);
-    border-radius: 15px;
-    z-index: 10;
+    border-radius: 24px;
+    box-shadow: 0 24px 48px rgba(0, 0, 0, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.1);
     display: flex;
     flex-direction: column;
-    justify-content: center;
     align-items: center;
-    height: 20%;
+    transform: scale(0.9);
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.popup[style*="display: flex"] .popup-tab {
+    transform: scale(1);
 }
 
 .popup-title {
     text-align: center;
-    font-size: 2rem;
-    border-bottom: solid 4px var(--color);
-    margin-bottom: 1rem;
+    font-size: 1.8rem;
+    font-weight: 700;
+    margin-bottom: 1.5rem;
+    background: linear-gradient(135deg, var(--color) 0%, var(--element-color) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.popup-content {
+    margin-bottom: 2rem;
+    text-align: center;
+    line-height: 1.6;
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 1rem;
 }
 
 .popup-options {
     display: none;
-    align-items: end;
-    flex-direction: column;
+    width: 100%;
+    justify-content: center;
 }
 
 .popup-button {
-    background: none;
-    color: var(--color);
-    border: solid 4px var(--element-color);
-    border-radius: 10px;
-    padding: 0.3rem 4rem;
-    font-size: inherit;
-    font-weight: bold;
-    margin: 15px 10px;
+    background: linear-gradient(135deg, #7c4dff 0%, #651fff 100%);
+    color: white;
+    border: none;
+    border-radius: 50px;
+    padding: 12px 40px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(124, 77, 255, 0.4);
+    transition: transform 0.2s, box-shadow 0.2s;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.popup-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(124, 77, 255, 0.6);
 }
 
 .panel {
-    transition: opacity 0.4s ease, transform 0.4s ease;
+    transition: opacity 0.4s ease, transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     position: absolute;
     width: 100%;
     height: 100%;
     opacity: 0;
     z-index: 0;
     pointer-events: none;
+    transform: scale(0.95);
 }
 
 .active {
     opacity: 1;
     z-index: 1;
     pointer-events: all;
+    transform: scale(1);
 }
+
 body.global {
     background-color: #000;
     background-size: cover;
+    background-position: center;
 }
 
 body.global::before {
@@ -175,59 +223,28 @@ body.global::before {
     bottom: 0;
     background-image: inherit;
     background-size: cover;
-    filter: blur(10px);
+    background-position: center;
+    filter: blur(20px) brightness(0.4);
     z-index: -1;
-}
-/* Classe réutilisable pour l'effet du hover */
-.element-hover {
-    position: relative;
-    overflow: hidden;
-    transition: transform 0.2s ease-in-out;
+    transform: scale(1.1);
 }
 
-.element-hover::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: 0;
-    height: 100%;
-    width: 100%;
-    background-color: var(--color);
-    opacity: 0;
-    transition: opacity 250ms ease;
-    z-index: -1;
+.loader {
+    width: 28px;
+    height: 28px;
+    border: 3px solid rgba(124, 77, 255, 0.3);
+    border-top: 3px solid var(--element-color);
+    border-radius: 50%;
+    animation: loader-spin 1s linear infinite;
+    margin: 10px auto;
 }
 
-.element-hover:hover::before {
-    opacity: 0.4;
-}
+@keyframes loader-spin {
+    0% {
+        transform: rotate(0deg);
+    }
 
-.element-hover:hover {
-    transform: none;
+    100% {
+        transform: rotate(360deg);
+    }
 }
-
-/* Pour éviter le problème du padding avec le hover dans le titre-tab */
-.element-hover-2 {
-    overflow: hidden;
-    transition: transform 0.2s ease-in-out;
-    position: relative;
-    padding: 2rem;
-}
-
-.element-hover-2::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: 0;
-    height: 100%;
-    width: 100%;
-    background-color: var(--color);
-    opacity: 0;
-    transition: opacity 250ms ease;
-    z-index: -1;
-}
-
-.element-hover-2:hover::before {
-    opacity: 0.4;
-}
-

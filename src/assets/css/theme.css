@@ -1,25 +1,28 @@
 .global {
-    --element-color: #7b52b9;
-    --gray-border-color: #808080;
-    --transition: all 0.5s cubic-bezier(1, 0.46, 0, 1.29);
-    --dark-color: #292929;
-    --light-color: rgb(245, 245, 245);
+    --element-color: #7C4DFF;
+    --hover-color-secondary: #651FFF;
+    --gray-border-color: rgba(255, 255, 255, 0.1);
+    --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --dark-color: #121212;
+    --light-color: #FAFAFA;
 }
 
 .dark {
-    --color: #F5F5F5;
-    --background: #292929;
-    --background-element: #424242;
-    --background-transparent: #2c2c2ccc;
-    --shadow: rgba(25, 25, 25, 0.7);
-    --svg-color: brightness(0) saturate(100%) invert(100%) sepia(55%) saturate(23%) hue-rotate(236deg) brightness(108%) contrast(92%);
+    --color: #FAFAFA;
+    --background: #121212;
+    --background-element: #1E1E24;
+    --background-transparent: rgba(30, 30, 36, 0.85);
+    --shadow: rgba(0, 0, 0, 0.5);
+    --svg-color: brightness(0) invert(1);
+    --card-bg: rgba(255, 255, 255, 0.05);
 }
 
 .light {
-    --color: #151515;
-    --background: rgb(245, 245, 245);
-    --background-element: #c2c2c2;
-    --background-transparent: rgba(204, 204, 204, 0.8);
-    --shadow: rgba(208, 208, 208, 0.7);
-    --svg-color: brightness(0) saturate(100%) invert(0%) sepia(5%) saturate(1719%) hue-rotate(357deg) brightness(94%) contrast(84%);
+    --color: #121212;
+    --background: #F5F5F5;
+    --background-element: #FFFFFF;
+    --background-transparent: rgba(255, 255, 255, 0.9);
+    --shadow: rgba(0, 0, 0, 0.1);
+    --svg-color: brightness(0);
+    --card-bg: #FFFFFF;
 }
