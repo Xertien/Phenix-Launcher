@@ -1,7 +1,7 @@
 {
     "name": "Phenix-Launcher",
     "preductname": "Phénix Launcher",
-    "version": "3.0.5",
+    "version": "3.0.6",
     "description": "Phénix moddé v3 launcher",
     "main": "src/app.js",
     "author": {
@@ -23,6 +23,7 @@
         "ignore": "**/test"
     },
     "dependencies": {
+        "@sentry/electron": "^7.5.0",
         "electron-updater": "^6.1.8",
         "minecraft-java-core": "^3.10.4",
         "node-bdd": "^2.0.4",
