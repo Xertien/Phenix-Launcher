@@ -3,6 +3,8 @@
  * @license CC-BY-NC 4.0 - https://creativecommons.org/licenses/by-nc/4.0
  */
 
+const Sentry = require('@sentry/electron/renderer');
+
 let console_log = console.log;
 let console_info = console.info;
 let console_warn = console.warn;
@@ -25,6 +27,7 @@ class logger {
 
         console.warn = value => {
             console_warn.call(console, `%c[${name}]:`, `color: ${color};`, value);
+            Sentry.captureMessage(`[${name}] ${typeof value === 'object' ? JSON.stringify(value) : value}`, 'warning');
         };
 
         console.debug = value => {
@@ -33,6 +36,11 @@ class logger {
 
         console.error = value => {
             console_error.call(console, `%c[${name}]:`, `color: ${color};`, value);
+            if (value instanceof Error) {
+                Sentry.captureException(value);
+            } else {
+                Sentry.captureMessage(`[${name}] ${typeof value === 'object' ? JSON.stringify(value) : value}`, 'error');
+            }
         };
     }
 }

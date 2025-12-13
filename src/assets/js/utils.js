@@ -7,6 +7,9 @@ const Sentry = require('@sentry/electron/renderer');
 
 Sentry.init({
     dsn: "https://38394ab6f5576f5332b25abe3fdb3a80@o4509386054500352.ingest.de.sentry.io/4510526799151184",
+    integrations: [
+        Sentry.captureConsoleIntegration({ levels: ['error', 'warn'] }),
+    ],
 });
 
 const { ipcRenderer } = require('electron')

@@ -20,7 +20,7 @@ class Login {
                 this.getAZauth();
             }
         }
-        
+
         document.querySelector('.cancel-home').addEventListener('click', () => {
             document.querySelector('.cancel-home').style.display = 'none'
             changePanel('settings')
@@ -36,17 +36,32 @@ class Login {
 
         microsoftBtn.addEventListener("click", () => {
             const loader = `<div class="loader"></div>`;
-        
+
             popupLogin.openPopup({
                 title: 'En cours de connexion...',
                 content: loader,
                 color: 'var(--color)'
             });
-                
+
+            console.log('[Login] Clicking Microsoft button, client_id:', this.config.client_id);
 
             ipcRenderer.invoke('Microsoft-window', this.config.client_id).then(async account_connect => {
+                console.log('[Login] Microsoft auth response:', account_connect);
+
+                if (account_connect?.error) {
+                    console.error('[Login] Microsoft auth raw error: ' + JSON.stringify(account_connect, null, 2));
+                }
+
                 if (account_connect == 'cancel' || !account_connect) {
                     popupLogin.closePopup();
+                    return;
+                } else if (account_connect.error) {
+                    popupLogin.openPopup({
+                        title: 'Erreur Microsoft',
+                        content: `${account_connect.error}: ${account_connect.errorMessage || account_connect.path || 'Unknown error'}`,
+                        color: 'red',
+                        options: true
+                    });
                     return;
                 } else {
                     await this.saveData(account_connect)
@@ -54,6 +69,7 @@ class Login {
                 }
 
             }).catch(err => {
+                console.error('[Login] Microsoft auth error:', err);
                 popupLogin.openPopup({
                     title: 'Erreur',
                     content: err,

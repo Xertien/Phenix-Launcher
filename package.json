@@ -1,12 +1,12 @@
 {
     "name": "Phenix-Launcher",
     "preductname": "Phénix Launcher",
-    "version": "3.0.6",
+    "version": "3.0.7",
     "description": "Phénix moddé v3 launcher",
     "main": "src/app.js",
     "author": {
         "name": "Xertien",
-        "email": "contact@noet.ovh",
+        "email": "contact@ptaki.dev",
         "url": "https://github.com/Xertien"
     },
     "url": "https://launchermodded.phe-go.com",

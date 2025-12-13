@@ -7,6 +7,9 @@ const Sentry = require('@sentry/electron/main');
 
 Sentry.init({
     dsn: "https://38394ab6f5576f5332b25abe3fdb3a80@o4509386054500352.ingest.de.sentry.io/4510526799151184",
+    integrations: [
+        Sentry.captureConsoleIntegration({ levels: ['error', 'warn'] }),
+    ],
 });
 
 const { app, ipcMain, nativeTheme } = require('electron');
@@ -67,7 +70,21 @@ ipcMain.on('main-window-hide', () => MainWindow.getWindow().hide())
 ipcMain.on('main-window-show', () => MainWindow.getWindow().show())
 
 ipcMain.handle('Microsoft-window', async (_, client_id) => {
-    return await new Microsoft(client_id).getAuth();
+    console.log('[Auth] Starting Microsoft authentication with client_id:', client_id);
+    try {
+        const result = await new Microsoft(client_id).getAuth();
+        console.log('[Auth] Microsoft auth result:', JSON.stringify(result, null, 2));
+
+        if (result && result.error) {
+            Sentry.captureMessage(`[Auth] Microsoft auth error: ${JSON.stringify(result)}`, 'error');
+        }
+
+        return result;
+    } catch (error) {
+        console.error('[Auth] Microsoft auth error:', error);
+        Sentry.captureException(error);
+        throw error;
+    }
 })
 
 ipcMain.handle('is-dark-theme', (_, theme) => {

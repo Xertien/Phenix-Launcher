@@ -24,6 +24,10 @@ class Launcher {
         if (process.platform == 'win32') this.initFrame();
         this.config = await config.GetConfig().then(res => res).catch(err => err);
         if (await this.config.error) return this.errorConnect()
+
+        console.log('[Config] Remote config loaded:', JSON.stringify(this.config, null, 2));
+        console.log('[Config] Using client_id from config:', this.config.client_id || '(default from minecraft-java-core)');
+
         this.db = new database();
         await this.initConfigClient();
         this.createPanels(Login, Home, Settings);
