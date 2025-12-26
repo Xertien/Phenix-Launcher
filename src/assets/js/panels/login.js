@@ -28,55 +28,126 @@ class Login {
     }
 
     async getMicrosoft() {
-        console.log('Initializing Microsoft login...');
+        console.log('Initializing Microsoft Device Code login...');
         let popupLogin = new popup();
         let loginHome = document.querySelector('.login-home');
         let microsoftBtn = document.querySelector('.connect-home');
         loginHome.style.display = 'block';
 
-        microsoftBtn.addEventListener("click", () => {
-            const loader = `<div class="loader"></div>`;
+        microsoftBtn.addEventListener("click", async () => {
+            console.log('[Login] Starting Device Code Flow, client_id:', this.config.client_id);
 
             popupLogin.openPopup({
-                title: 'En cours de connexion...',
-                content: loader,
+                title: 'Connexion Microsoft',
+                content: '<div class="loader"></div><p style="text-align: center; margin-top: 10px;">Obtention du code...</p>',
                 color: 'var(--color)'
             });
 
-            console.log('[Login] Clicking Microsoft button, client_id:', this.config.client_id);
+            const deviceCodeResult = await ipcRenderer.invoke('Microsoft-device-code-start', this.config.client_id);
 
-            ipcRenderer.invoke('Microsoft-window', this.config.client_id).then(async account_connect => {
-                console.log('[Login] Microsoft auth response:', account_connect);
-
-                if (account_connect?.error) {
-                    console.error('[Login] Microsoft auth raw error: ' + JSON.stringify(account_connect, null, 2));
-                }
-
-                if (account_connect == 'cancel' || !account_connect) {
-                    popupLogin.closePopup();
-                    return;
-                } else if (account_connect.error) {
-                    popupLogin.openPopup({
-                        title: 'Erreur Microsoft',
-                        content: `${account_connect.error}: ${account_connect.errorMessage || account_connect.path || 'Unknown error'}`,
-                        color: 'red',
-                        options: true
-                    });
-                    return;
-                } else {
-                    await this.saveData(account_connect)
-                    popupLogin.closePopup();
-                }
-
-            }).catch(err => {
-                console.error('[Login] Microsoft auth error:', err);
+            if (deviceCodeResult.error) {
+                console.error('[Login] Device code request error:', deviceCodeResult);
                 popupLogin.openPopup({
                     title: 'Erreur',
-                    content: err,
+                    content: `${deviceCodeResult.error}: ${deviceCodeResult.errorMessage || 'Unknown error'}`,
+                    color: 'red',
                     options: true
                 });
+                return;
+            }
+
+            const { sessionId, user_code, verification_uri, device_code, interval, expires_in } = deviceCodeResult;
+            const authUrl = verification_uri;
+
+            const codeHtml = `
+                <div style="text-align: center;">
+                    <p style="margin-bottom: 15px;">Ouvrez votre navigateur et entrez ce code :</p>
+                    <div style="background: rgba(124, 77, 255, 0.2); border-radius: 12px; padding: 20px; margin: 15px 0; display: flex; align-items: center; justify-content: center; gap: 15px;">
+                        <span id="user-code-display" style="font-size: 2rem; font-weight: bold; letter-spacing: 5px; font-family: monospace;">${user_code}</span>
+                        <button id="copy-code-btn" style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; padding: 8px 12px; cursor: pointer; color: var(--color); transition: all 0.2s ease;" title="Copier le code">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    <p id="copy-feedback" style="font-size: 0.85rem; color: #4caf50; opacity: 0; margin-bottom: 10px; transition: opacity 0.2s;">Code copié !</p>
+                    <button id="open-browser-btn" class="popup-button" style="margin-bottom: 15px;">
+                        Ouvrir le navigateur
+                    </button>
+                    <div class="loader" style="margin: 15px auto;"></div>
+                    <p style="font-size: 0.85rem; opacity: 0.7;">En attente de connexion...</p>
+                </div>
+            `;
+
+            popupLogin.openPopup({
+                title: 'Connexion Microsoft',
+                content: codeHtml,
+                color: 'var(--color)',
+                options: true
             });
-        })
+
+            setTimeout(() => {
+                const openBrowserBtn = document.getElementById('open-browser-btn');
+                const copyCodeBtn = document.getElementById('copy-code-btn');
+                const copyFeedback = document.getElementById('copy-feedback');
+                const { shell, clipboard } = require('electron');
+
+                if (openBrowserBtn) {
+                    openBrowserBtn.addEventListener('click', () => {
+                        shell.openExternal(authUrl);
+                    });
+                }
+
+                if (copyCodeBtn) {
+                    copyCodeBtn.addEventListener('click', () => {
+                        clipboard.writeText(user_code);
+                        copyFeedback.style.opacity = '1';
+                        setTimeout(() => {
+                            copyFeedback.style.opacity = '0';
+                        }, 2000);
+                    });
+
+                    copyCodeBtn.addEventListener('mouseenter', () => {
+                        copyCodeBtn.style.background = 'rgba(255,255,255,0.2)';
+                    });
+                    copyCodeBtn.addEventListener('mouseleave', () => {
+                        copyCodeBtn.style.background = 'rgba(255,255,255,0.1)';
+                    });
+                }
+            }, 100);
+
+            const popupElement = document.querySelector('.popup');
+            const originalCloseHandler = () => {
+                ipcRenderer.invoke('Microsoft-device-code-cancel', sessionId);
+            };
+
+            const pollResult = await ipcRenderer.invoke('Microsoft-device-code-poll', {
+                sessionId,
+                device_code,
+                interval,
+                expires_in
+            });
+
+            console.log('[Login] Device code poll result:', pollResult);
+
+            if (pollResult.error) {
+                if (pollResult.error === 'cancelled') {
+                    popupLogin.closePopup();
+                    return;
+                }
+                popupLogin.openPopup({
+                    title: 'Erreur Microsoft',
+                    content: `${pollResult.error}: ${pollResult.errorMessage || 'Unknown error'}`,
+                    color: 'red',
+                    options: true
+                });
+                return;
+            }
+
+            await this.saveData(pollResult);
+            popupLogin.closePopup();
+        });
     }
 
     async getCrack() {

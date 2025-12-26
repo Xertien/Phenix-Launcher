@@ -2,7 +2,7 @@
  * @author Luuxis
  * @license CC-BY-NC 4.0 - https://creativecommons.org/licenses/by-nc/4.0
  */
-import { config, database, logger, changePanel, appdata, setStatus, pkg, popup, accountSelect, skin2D } from '../utils.js'
+import { config, database, logger, changePanel, appdata, setStatus, pkg, popup, accountSelect, addAccount, skin2D } from '../utils.js'
 
 const { Launch } = require('minecraft-java-core')
 const { shell, ipcRenderer } = require('electron')
@@ -169,18 +169,74 @@ class Home {
 
                 let popupLogin = new popup();
                 popupLogin.openPopup({
-                    title: 'Connexion Microsoft...',
-                    content: '<div class="loader"></div>',
+                    title: 'Connexion Microsoft',
+                    content: '<div class="loader"></div><p style="text-align: center; margin-top: 10px;">Obtention du code...</p>',
                     color: 'var(--color)'
                 });
 
                 try {
-                    const account_connect = await ipcRenderer.invoke('Microsoft-window', this.config.client_id);
+                    const deviceCodeResult = await ipcRenderer.invoke('Microsoft-device-code-start', this.config.client_id);
 
-                    if (account_connect === 'cancel' || !account_connect) {
-                        popupLogin.closePopup();
+                    if (deviceCodeResult.error) {
+                        popupLogin.openPopup({
+                            title: 'Erreur',
+                            content: `${deviceCodeResult.error}: ${deviceCodeResult.errorMessage || 'Erreur inconnue'}`,
+                            color: 'red',
+                            options: true
+                        });
                         return;
-                    } else if (account_connect.error) {
+                    }
+
+                    const { sessionId, user_code, verification_uri, device_code, interval, expires_in } = deviceCodeResult;
+
+                    const codeHtml = `
+                        <div style="text-align: center;">
+                            <p style="margin-bottom: 15px;">Ouvrez votre navigateur et entrez ce code :</p>
+                            <div style="background: rgba(124, 77, 255, 0.2); border-radius: 12px; padding: 20px; margin: 15px 0; display: flex; align-items: center; justify-content: center; gap: 15px;">
+                                <span style="font-size: 2rem; font-weight: bold; letter-spacing: 5px; font-family: monospace;">${user_code}</span>
+                                <button id="copy-code-btn-home" style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; padding: 8px 12px; cursor: pointer; color: var(--color); transition: all 0.2s ease;" title="Copier le code">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                                </button>
+                            </div>
+                            <p id="copy-feedback-home" style="font-size: 0.85rem; color: #4caf50; opacity: 0; margin-bottom: 10px; transition: opacity 0.2s;">Code copié !</p>
+                            <button id="open-browser-btn-home" class="popup-button" style="margin-bottom: 15px;">Ouvrir le navigateur</button>
+                            <div class="loader" style="margin: 15px auto;"></div>
+                            <p style="font-size: 0.85rem; opacity: 0.7;">En attente de connexion...</p>
+                        </div>
+                    `;
+
+                    popupLogin.openPopup({
+                        title: 'Connexion Microsoft',
+                        content: codeHtml,
+                        color: 'var(--color)',
+                        options: true
+                    });
+
+                    setTimeout(() => {
+                        const { shell, clipboard } = require('electron');
+                        const openBtn = document.getElementById('open-browser-btn-home');
+                        const copyBtn = document.getElementById('copy-code-btn-home');
+                        const copyFeedback = document.getElementById('copy-feedback-home');
+
+                        if (openBtn) openBtn.addEventListener('click', () => shell.openExternal(verification_uri));
+                        if (copyBtn) {
+                            copyBtn.addEventListener('click', () => {
+                                clipboard.writeText(user_code);
+                                copyFeedback.style.opacity = '1';
+                                setTimeout(() => copyFeedback.style.opacity = '0', 2000);
+                            });
+                        }
+                    }, 100);
+
+                    const account_connect = await ipcRenderer.invoke('Microsoft-device-code-poll', {
+                        sessionId, device_code, interval, expires_in
+                    });
+
+                    if (account_connect.error) {
+                        if (account_connect.error === 'cancelled') {
+                            popupLogin.closePopup();
+                            return;
+                        }
                         popupLogin.openPopup({
                             title: 'Erreur Microsoft',
                             content: `${account_connect.error}: ${account_connect.errorMessage || 'Erreur inconnue'}`,

@@ -13,7 +13,6 @@ Sentry.init({
 });
 
 const { app, ipcMain, nativeTheme } = require('electron');
-const { Microsoft } = require('minecraft-java-core');
 const { autoUpdater } = require('electron-updater')
 
 const path = require('path');
@@ -69,23 +68,83 @@ ipcMain.on('main-window-maximize', () => {
 ipcMain.on('main-window-hide', () => MainWindow.getWindow().hide())
 ipcMain.on('main-window-show', () => MainWindow.getWindow().show())
 
-ipcMain.handle('Microsoft-window', async (_, client_id) => {
-    console.log('[Auth] Starting Microsoft authentication with client_id:', client_id);
-    try {
-        const result = await new Microsoft(client_id).getAuth();
-        console.log('[Auth] Microsoft auth result:', JSON.stringify(result, null, 2));
+const MicrosoftDeviceAuth = require('./assets/js/utils/msDeviceAuth.js');
 
-        if (result && result.error) {
-            Sentry.captureMessage(`[Auth] Microsoft auth error: ${JSON.stringify(result)}`, 'error');
+const activeAuthSessions = new Map();
+
+ipcMain.handle('Microsoft-device-code-start', async (event, client_id) => {
+    console.log('[Auth] Starting Microsoft Device Code authentication with client_id:', client_id);
+    try {
+        const auth = new MicrosoftDeviceAuth(client_id);
+        const sessionId = Date.now().toString();
+        activeAuthSessions.set(sessionId, auth);
+
+        const deviceCode = await auth.requestDeviceCode();
+        if (deviceCode.error) {
+            activeAuthSessions.delete(sessionId);
+            Sentry.captureMessage(`[Auth] Device code request error: ${JSON.stringify(deviceCode)}`, 'error');
+            return { error: deviceCode.error, errorMessage: deviceCode.errorMessage };
         }
 
+        return {
+            sessionId,
+            user_code: deviceCode.user_code,
+            verification_uri: deviceCode.verification_uri,
+            expires_in: deviceCode.expires_in,
+            device_code: deviceCode.device_code,
+            interval: deviceCode.interval
+        };
+    } catch (error) {
+        console.error('[Auth] Device code error:', error);
+        Sentry.captureException(error);
+        return { error: 'exception', errorMessage: error.message };
+    }
+});
+
+ipcMain.handle('Microsoft-device-code-poll', async (event, { sessionId, device_code, interval, expires_in }) => {
+    console.log('[Auth] Polling for Microsoft auth completion, session:', sessionId);
+    try {
+        const auth = activeAuthSessions.get(sessionId);
+        if (!auth) {
+            return { error: 'session_not_found', errorMessage: 'Auth session not found' };
+        }
+
+        const tokenResult = await auth.pollForToken(device_code, interval, expires_in);
+
+        if (tokenResult.error) {
+            activeAuthSessions.delete(sessionId);
+            if (tokenResult.error !== 'cancelled') {
+                Sentry.captureMessage(`[Auth] Device code poll error: ${JSON.stringify(tokenResult)}`, 'error');
+            }
+            return tokenResult;
+        }
+
+        const result = await auth.exchangeForMinecraft(tokenResult);
+        activeAuthSessions.delete(sessionId);
+
+        if (result.error) {
+            Sentry.captureMessage(`[Auth] Minecraft exchange error: ${JSON.stringify(result)}`, 'error');
+        }
+
+        console.log('[Auth] Device code auth result:', JSON.stringify(result, null, 2));
         return result;
     } catch (error) {
-        console.error('[Auth] Microsoft auth error:', error);
+        console.error('[Auth] Device code poll error:', error);
+        activeAuthSessions.delete(sessionId);
         Sentry.captureException(error);
-        throw error;
+        return { error: 'exception', errorMessage: error.message };
     }
-})
+});
+
+ipcMain.handle('Microsoft-device-code-cancel', async (event, sessionId) => {
+    console.log('[Auth] Cancelling Microsoft auth session:', sessionId);
+    const auth = activeAuthSessions.get(sessionId);
+    if (auth) {
+        auth.cancel();
+        activeAuthSessions.delete(sessionId);
+    }
+    return { success: true };
+});
 
 ipcMain.handle('is-dark-theme', (_, theme) => {
     if (theme === 'dark') return true
