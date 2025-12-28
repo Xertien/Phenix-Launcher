@@ -9,7 +9,9 @@ import Settings from './panels/settings.js';
 
 // import modules
 import { logger, config, changePanel, database, popup, setBackground, accountSelect, addAccount, pkg } from './utils.js';
-const { AZauth, Microsoft, Mojang } = require('minecraft-java-core');
+const { AZauth, Mojang } = require('minecraft-java-core');
+const path = require('path');
+const MicrosoftDeviceAuth = require(path.join(__dirname, 'assets', 'js', 'utils', 'msDeviceAuth.js'));
 
 // libs
 const { ipcRenderer } = require('electron');
@@ -180,7 +182,7 @@ class Launcher {
                         background: false
                     });
 
-                    let refresh_accounts = await new Microsoft(this.config.client_id).refresh(account);
+                    let refresh_accounts = await new MicrosoftDeviceAuth(this.config.client_id).refresh(account);
 
                     if (refresh_accounts.error) {
                         await this.db.deleteData('accounts', account_ID)

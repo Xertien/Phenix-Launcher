@@ -121,6 +121,37 @@ class MicrosoftDeviceAuth {
         this.polling = false;
     }
 
+    /**
+     * Refresh a Microsoft account using a refresh token
+     * @param {object} account - The account object to refresh
+     */
+    async refresh(account) {
+        try {
+            const response = await fetch(this.tokenEndpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: `client_id=${this.client_id}&scope=${encodeURIComponent(this.scope)}&refresh_token=${account.refresh_token}&grant_type=refresh_token`
+            });
+
+            const data = await response.json();
+
+            if (data.error) {
+                return { error: data.error, errorMessage: data.error_description };
+            }
+
+            const oauth2 = {
+                access_token: data.access_token,
+                refresh_token: data.refresh_token,
+                expires_in: data.expires_in
+            };
+
+            return await this.exchangeForMinecraft(oauth2);
+
+        } catch (err) {
+            return { error: 'network_error', errorMessage: err.message };
+        }
+    }
+
     async exchangeForMinecraft(oauth2) {
         try {
             const xblResponse = await fetch('https://user.auth.xboxlive.com/user/authenticate', {
