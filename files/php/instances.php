@@ -1,5 +1,10 @@
 <?php
-$instance['hypixel'] = array_merge($instance['hypixel'], array(
+if (!isset($instance)) {
+    http_response_code(403);
+    exit;
+}
+
+if (isset($instance['hypixel'])) $instance['hypixel'] = array_merge($instance['hypixel'], array(
     "loadder" => array(
         "minecraft_version" => "1.8.9",
         "loadder_type" => "forge",
@@ -27,7 +32,7 @@ $instance['hypixel'] = array_merge($instance['hypixel'], array(
     )
 ));
 
-$instance['PokeMoonX'] = array_merge($instance['PokeMoonX'], array(
+if (isset($instance['PokeMoonX'])) $instance['PokeMoonX'] = array_merge($instance['PokeMoonX'], array(
     "loadder" => array(
         "minecraft_version" => "1.16.5",
         "loadder_type" => "forge",
