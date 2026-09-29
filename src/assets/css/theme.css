@@ -15,6 +15,8 @@
     --success-rgb: 76, 175, 80;
     --danger: #F44336;
     --danger-rgb: 244, 67, 54;
+    --warning: #FFA726;
+    --warning-rgb: 255, 167, 38;
 
     --radius-xs: 4px;
     --radius-sm: 8px;
@@ -100,7 +102,6 @@
 
     --heading-gradient: linear-gradient(135deg, #FFFFFF 0%, #A5A5A5 100%);
     --svg-color: brightness(0) invert(1);
-    --scrollbar-thumb: rgba(var(--element-rgb), 0.3);
 }
 
 .light {
@@ -112,6 +113,8 @@
     --success-rgb: 46, 125, 50;
     --danger: #C62828;
     --danger-rgb: 198, 40, 40;
+    --warning: #A15C00;
+    --warning-rgb: 161, 92, 0;
     --tooltip-bg: #2A2833;
     --background: #E7E5EF;
     --text-secondary: rgba(22, 20, 31, 0.74);
@@ -143,5 +146,4 @@
 
     --heading-gradient: linear-gradient(135deg, #2A2638 0%, #5A5570 100%);
     --svg-color: brightness(0);
-    --scrollbar-thumb: rgba(52, 40, 110, 0.2);
 }

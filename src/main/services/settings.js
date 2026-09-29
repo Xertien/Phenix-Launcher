@@ -217,6 +217,20 @@ class Settings {
         }
     }
 
+    async getPendingInstances() {
+        let configClient = await this.get();
+        return sanitizePinned(configClient.pending_instances);
+    }
+
+    async setInstancePending(name, pending) {
+        if (!isSafePathSegment(name)) return;
+        await this.update(configClient => {
+            let list = sanitizePinned(configClient.pending_instances).filter(item => item !== name);
+            if (pending) list.push(name);
+            configClient.pending_instances = list.slice(-MAX_PINNED);
+        });
+    }
+
     async setJavaPath(javaPath) {
         await this.update(configClient => {
             configClient.java_config = configClient.java_config || defaultConfig().java_config;

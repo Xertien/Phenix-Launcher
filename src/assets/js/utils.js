@@ -95,7 +95,31 @@ async function headplayer(skinBase64) {
     if (skin) document.querySelector(".player-head").style.backgroundImage = `url(${skin})`;
 }
 
+const STATUS_REFRESH_MS = 2000;
+let statusInstance = null;
+let statusTimer = null;
+let statusBusy = false;
+
+async function refreshStatus() {
+    if (statusBusy || !statusInstance?.status || document.hidden) return;
+    statusBusy = true;
+    try {
+        await renderStatus(statusInstance);
+    } finally {
+        statusBusy = false;
+    }
+}
+
 async function setStatus(instance) {
+    statusInstance = instance;
+    if (!statusTimer) {
+        statusTimer = setInterval(refreshStatus, STATUS_REFRESH_MS);
+        document.addEventListener('visibilitychange', refreshStatus);
+    }
+    await renderStatus(instance);
+}
+
+async function renderStatus(instance) {
     let nameServerElement = document.querySelector('.server-status-name')
     let statusServerElement = document.querySelector('.server-status-text')
     let playersOnline = document.querySelector('.status-player-count .player-count')
@@ -110,6 +134,7 @@ async function setStatus(instance) {
 
     nameServerElement.textContent = decodeEntities(instance.status.nameServer)
     let statusServer = await window.launcher.server.status(instance.name).catch(() => ({ online: false }));
+    if (instance !== statusInstance) return;
 
     if (statusServer?.online) {
         statusServerElement.classList.remove('red')

@@ -43,8 +43,8 @@ input:focus-visible {
 }
 
 ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+    width: 6px;
+    height: 6px;
 }
 
 ::-webkit-scrollbar-track {
@@ -52,12 +52,22 @@ input:focus-visible {
 }
 
 ::-webkit-scrollbar-thumb {
-    background: var(--scrollbar-thumb);
-    border-radius: var(--radius-xs);
+    background: rgba(255, 255, 255, 0.4);
+    border-radius: var(--radius-pill);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background: var(--element-color);
+    background: rgba(255, 255, 255, 0.75);
+}
+
+.light ::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(52, 40, 110, 0.2);
+}
+
+.light ::-webkit-scrollbar-thumb:hover {
+    background: #FFFFFF;
+    border-color: rgba(52, 40, 110, 0.35);
 }
 
 .dragbar {
@@ -210,6 +220,45 @@ input:focus-visible {
     transition: transform var(--duration-fast), box-shadow var(--duration-fast);
     text-transform: uppercase;
     letter-spacing: 1px;
+}
+
+.popup-options-confirm {
+    gap: 12px;
+}
+
+.popup-button[hidden] {
+    display: none;
+}
+
+.popup-button.popup-button-secondary {
+    background: var(--surface-hover);
+    color: var(--color);
+    border: 1px solid var(--border-strong);
+    box-shadow: none;
+}
+
+.popup-button.popup-button-secondary:hover {
+    box-shadow: none;
+    background: var(--border-strong);
+}
+
+.popup-button.popup-button-danger {
+    background: var(--danger);
+    box-shadow: 0 4px 12px rgba(var(--danger-rgb), 0.35);
+}
+
+.popup-button.popup-button-danger:hover {
+    box-shadow: 0 8px 20px rgba(var(--danger-rgb), 0.45);
+}
+
+.popup-confirm-text {
+    margin: 0 0 10px;
+}
+
+.popup-confirm-text:first-child {
+    color: var(--color);
+    font-weight: 700;
+    overflow-wrap: anywhere;
 }
 
 .popup-button:hover {

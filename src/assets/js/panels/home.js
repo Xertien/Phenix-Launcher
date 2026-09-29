@@ -8,6 +8,9 @@ import { config, logger, changePanel, setStatus, pkg, popup, accountSelect, addA
 const PIN_ICON = 'M640-760v280l68 68q6 6 9 13.5t3 15.5v23q0 17-11.5 28.5T680-320H520v234q0 17-11.5 28.5T480-46q-17 0-28.5-11.5T440-86v-234H280q-17 0-28.5-11.5T240-360v-23q0-8 3-15.5t9-13.5l68-68v-280q-17 0-28.5-11.5T280-800q0-17 11.5-28.5T320-840h320q17 0 28.5 11.5T680-800q0 17-11.5 28.5T640-760ZM354-400h252l-46-46v-314H400v314l-46 46Zm126 0Z';
 const PIN_ICON_FILLED = 'M640-760v280l68 68q6 6 9 13.5t3 15.5v23q0 17-11.5 28.5T680-320H520v234q0 17-11.5 28.5T480-46q-17 0-28.5-11.5T440-86v-234H280q-17 0-28.5-11.5T240-360v-23q0-8 3-15.5t9-13.5l68-68v-280q-17 0-28.5-11.5T280-800q0-17 11.5-28.5T320-840h320q17 0 28.5 11.5T680-800q0 17-11.5 28.5T640-760Z';
 const LOCK_ICON = 'M240-80q-33 0-56.5-23.5T160-160v-400q0-33 23.5-56.5T240-640h40v-80q0-83 58.5-141.5T480-920q83 0 141.5 58.5T680-720v80h40q33 0 56.5 23.5T800-560v400q0 33-23.5 56.5T720-80H240Zm240-200q33 0 56.5-23.5T560-360q0-33-23.5-56.5T480-440q-33 0-56.5 23.5T400-360q0 33 23.5 56.5T480-280ZM360-640h240v-80q0-50-35-85t-85-35q-50 0-85 35t-35 85v80Z';
+const TRASH_ICON = 'M280-120q-33 0-56.5-23.5T200-200v-520h-40v-80h200v-40h240v40h200v80h-40v520q0 33-23.5 56.5T680-120H280Zm400-600H280v520h400v-520ZM360-280h80v-360h-80v360Zm160 0h80v-360h-80v360ZM280-720v520-520Z';
+const DOWNLOAD_DONE_ICON = 'M200-160v-80h560v80H200Zm202-160L204-518l56-56 142 142 298-298 56 56-354 354Z';
+const DOWNLOAD_ICON = 'M480-320 280-520l56-58 104 104v-326h80v326l104-104 56 58-200 200ZM240-160q-33 0-56.5-23.5T160-240v-120h80v120h480v-120h80v120q0 33-23.5 56.5T720-160H240Z';
 const CHECK_ICON = 'M382-240 154-468l57-57 171 171 367-367 57 57-424 424Z';
 
 class Home {
@@ -459,6 +462,7 @@ class Home {
         this.instanceSelect = instanceSelect;
         this.updateInstanceButton();
         setStatus(this.instancesList.find(i => i.name == instanceSelect));
+        this.refreshInstanceStates();
     }
 
     setupInstanceMenu() {
@@ -515,6 +519,7 @@ class Home {
             let option = e.target.closest('.instance-elements');
             if (!option) return;
             if (e.target.closest('.instance-pin')) return this.togglePin(option.dataset.name);
+            if (e.target.closest('.instance-delete')) return this.deleteInstance(option.dataset.name);
             this.selectInstance(option.dataset.name);
         });
 
@@ -540,6 +545,9 @@ class Home {
             } else if (e.key === 'Enter' || e.key === ' ') {
                 e.preventDefault();
                 this.selectInstance(option.dataset.name);
+            } else if (e.key === 'Delete') {
+                e.preventDefault();
+                this.deleteInstance(option.dataset.name);
             } else if ((e.key === 'p' || e.key === 'P') && !e.ctrlKey && !e.altKey && !e.metaKey) {
                 e.preventDefault();
                 this.togglePin(option.dataset.name);
@@ -571,6 +579,7 @@ class Home {
 
         let current = document.querySelector('.instances-list .instance-elements[tabindex="0"]');
         if (current) current.scrollIntoView({ block: 'nearest' });
+        this.refreshInstanceStates();
     }
 
     closeInstanceMenu() {
@@ -607,6 +616,24 @@ class Home {
         let version = instance?.loadder?.minecraft_version;
         if (typeof version === 'string' && version.length) parts.push(`Minecraft ${version}`);
         return parts.join(' · ');
+    }
+
+    fillInstanceMeta(element, instance) {
+        element.replaceChildren();
+        let serverName = decodeEntities(instance?.status?.nameServer ?? '').trim();
+        let version = instance?.loadder?.minecraft_version;
+        if (serverName) {
+            let server = document.createElement('span');
+            server.classList.add('meta-server');
+            server.textContent = serverName;
+            element.appendChild(server);
+        }
+        if (typeof version === 'string' && version.length) {
+            let versionElement = document.createElement('span');
+            versionElement.classList.add('meta-version');
+            versionElement.textContent = serverName ? `· Minecraft ${version}` : `Minecraft ${version}`;
+            element.appendChild(versionElement);
+        }
     }
 
     renderInstanceList(focusName = null) {
@@ -695,6 +722,7 @@ class Home {
         option.dataset.name = instance.name;
 
 
+        let stateInfo = this.instanceStates?.get(instance.name);
         let infos = document.createElement('div');
         infos.classList.add('instance-infos');
         let name = document.createElement('div');
@@ -705,7 +733,8 @@ class Home {
         if (description) {
             let meta = document.createElement('div');
             meta.classList.add('instance-meta');
-            meta.textContent = description;
+            this.fillInstanceMeta(meta, instance);
+            meta.title = description;
             infos.appendChild(meta);
         }
 
@@ -735,8 +764,114 @@ class Home {
         pin.setAttribute('aria-label', `${pinned ? 'Désépingler' : 'Épingler'} ${instance.name}`);
         pin.appendChild(this.createIcon(pinned ? PIN_ICON_FILLED : PIN_ICON));
 
-        option.append(infos, badges, pin);
+        let actions = document.createElement('div');
+        actions.classList.add('instance-actions');
+        let slot = document.createElement('div');
+        slot.classList.add('instance-delete-slot');
+        actions.appendChild(slot);
+        if (stateInfo?.deletable) {
+            let remove = document.createElement('button');
+            remove.type = 'button';
+            remove.tabIndex = -1;
+            remove.classList.add('instance-delete');
+            remove.title = 'Supprimer de votre PC (Suppr)';
+            remove.setAttribute('aria-label', `Supprimer ${instance.name} de votre PC`);
+            remove.appendChild(this.createIcon(TRASH_ICON));
+            slot.appendChild(remove);
+        }
+        actions.appendChild(pin);
+
+        option.classList.toggle('deletable-instance', !!stateInfo?.deletable);
+        option.classList.toggle('has-badges', badges.childElementCount > 0);
+        option.append(this.createInstanceState(stateInfo?.state ?? 'unknown', false), infos, badges, actions);
         return option;
+    }
+
+    instanceStateLabel(state, card) {
+        if (state === 'installed') return 'Installée';
+        if (state === 'incomplete') return 'Téléchargement incomplet';
+        return card ? 'À télécharger' : 'Non installée';
+    }
+
+    createInstanceState(state, card) {
+        let element = document.createElement('span');
+        let key = state === 'installed' ? 'installed' : (state === 'incomplete' ? 'incomplete' : (state === 'unknown' ? 'unknown' : 'missing'));
+        element.classList.add('instance-state', `state-${key}`);
+        if (key === 'unknown') {
+            element.setAttribute('aria-hidden', 'true');
+            return element;
+        }
+        let label = this.instanceStateLabel(state, card);
+        element.setAttribute('role', 'img');
+        element.setAttribute('aria-label', label);
+        element.title = label;
+        element.appendChild(this.createIcon(key === 'installed' ? DOWNLOAD_DONE_ICON : DOWNLOAD_ICON));
+        return element;
+    }
+
+    async refreshInstanceStates() {
+        let list = await window.launcher.instances.status().catch(() => null);
+        if (!Array.isArray(list)) return false;
+        let next = new Map();
+        for (let item of list) {
+            if (item && typeof item.name === 'string') next.set(item.name, { state: item.state, deletable: item.deletable === true });
+        }
+        let changed = !this.instanceStates || this.instanceStates.size !== next.size || [...next].some(([name, value]) => {
+            let previous = this.instanceStates.get(name);
+            return !previous || previous.state !== value.state || previous.deletable !== value.deletable;
+        });
+        this.instanceStates = next;
+        if (changed) {
+            this.updateInstanceButton();
+            let instancePopup = document.querySelector('.instance-popup');
+            if (instancePopup.classList.contains('active-popup')) {
+                let focused = document.activeElement?.closest?.('.instance-elements')?.dataset.name ?? null;
+                this.renderInstanceList(focused);
+            }
+        }
+        return changed;
+    }
+
+    showInstanceToast(message, error) {
+        let toast = document.querySelector('.instances-toast');
+        toast.textContent = message;
+        toast.classList.toggle('toast-error', !!error);
+        toast.hidden = false;
+        void toast.offsetWidth;
+        toast.classList.add('visible');
+        clearTimeout(this.instanceToastTimer);
+        this.instanceToastTimer = setTimeout(() => {
+            toast.classList.remove('visible');
+            this.instanceToastTimer = setTimeout(() => { toast.hidden = true; }, 250);
+        }, 3500);
+    }
+
+    async deleteInstance(name) {
+        let stateInfo = this.instanceStates?.get(name);
+        if (!stateInfo?.deletable || this.deletingInstance) return;
+        let confirmed = await new popup().confirm({
+            title: 'Supprimer l\'instance',
+            text: [
+                `Supprimer ${name} de votre PC ?`,
+                'Les fichiers de l\'instance seront supprimés, vos sauvegardes (saves) aussi. Cette action est irréversible.'
+            ],
+            confirmLabel: 'Supprimer',
+            cancelLabel: 'Annuler',
+            danger: true
+        });
+        if (!confirmed) return;
+
+        this.deletingInstance = name;
+        let row = this.instanceOptions().find(option => option.dataset.name === name);
+        if (row) row.classList.add('deleting-instance');
+        let result = await window.launcher.instances.remove(name).catch(() => ({ error: 'failed', message: 'La suppression a échoué.' }));
+        this.deletingInstance = null;
+
+        if (result?.deleted) this.showInstanceToast('Instance supprimée.', false);
+        else this.showInstanceToast(String(result?.message || 'La suppression a échoué.'), true);
+
+        await this.refreshInstanceStates();
+        this.renderInstanceList(name);
     }
 
     async selectInstance(name) {
@@ -775,11 +910,19 @@ class Home {
         selectButton.tabIndex = single ? -1 : 0;
         selectButton.setAttribute('aria-disabled', String(single));
         selectButton.querySelector('.instance-select-name').textContent = name;
+        let stateInfo = instance ? this.instanceStates?.get(instance.name) : null;
         let meta = selectButton.querySelector('.instance-select-meta');
-        meta.textContent = description;
+        this.fillInstanceMeta(meta, instance);
+        meta.title = description;
         meta.hidden = !description;
+        let stateSlot = selectButton.querySelector('.instance-select-state');
+        stateSlot.replaceChildren();
+        if (stateInfo) stateSlot.appendChild(this.createInstanceState(stateInfo.state, true));
+        stateSlot.hidden = !stateInfo;
 
-        let label = instance ? `Instance : ${instance.name}${description ? ` (${description})` : ''}` : 'Choisir une instance';
+        let stateLabel = stateInfo ? this.instanceStateLabel(stateInfo.state, true) : '';
+        let details = [stateLabel, description].filter(Boolean).join(', ');
+        let label = instance ? `Instance : ${instance.name}${details ? ` (${details})` : ''}` : 'Choisir une instance';
         selectButton.title = single ? label : `${label}. Cliquer pour changer d'instance`;
         selectButton.setAttribute('aria-label', single ? label : `${label}. Changer d'instance`);
     }
@@ -832,6 +975,7 @@ class Home {
             btnText.textContent = `Démarrage...`
             btnProgressFill.style.width = '100%'
             if (!this.gameLogger) {
+                this.refreshInstanceStates();
                 this.gameLogger = true;
                 new logger('Minecraft', '#36b030');
             }
@@ -839,6 +983,7 @@ class Home {
         })
 
         window.launcher.game.on('close', code => {
+            this.refreshInstanceStates();
             this.resetPlayButton();
             this.gameLogger = false;
             new logger(pkg.name, '#7289da');

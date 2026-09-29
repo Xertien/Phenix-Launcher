@@ -52,6 +52,7 @@
                     <span class="btn-text">Jouer</span>
                 </button>
                 <div class="instance-select" title="Choisir une instance" role="button" tabindex="0" aria-haspopup="dialog" aria-label="Choisir une instance">
+                    <span class="instance-select-state" hidden></span>
                     <div class="instance-select-infos">
                         <span class="instance-select-name">Chargement...</span>
                         <span class="instance-select-meta" hidden></span>
@@ -83,6 +84,7 @@
                 <input type="text" class="instances-search-input" placeholder="Rechercher une instance..." aria-label="Rechercher une instance" autocomplete="off" spellcheck="false">
             </div>
             <div class="instances-list" role="listbox" aria-label="Instances"></div>
+            <div class="instances-toast" role="status" aria-live="polite" hidden></div>
         </div>
     </div>
 

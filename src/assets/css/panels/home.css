@@ -650,12 +650,25 @@
 }
 
 .instance-select-meta {
+    display: flex;
+    gap: 4px;
+    min-width: 0;
     font-size: var(--font-size-xs);
     font-weight: 500;
     color: var(--text-muted);
     white-space: nowrap;
+}
+
+.instance-select-meta .meta-server,
+.instance-meta .meta-server {
+    min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
+}
+
+.instance-select-meta .meta-version,
+.instance-meta .meta-version {
+    flex-shrink: 0;
 }
 
 .instance-select-meta[hidden] {
@@ -863,7 +876,7 @@
 .instances-group-title {
     position: sticky;
     top: 0;
-    z-index: var(--z-raised);
+    z-index: var(--z-overlay-local);
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -932,12 +945,13 @@
 }
 
 .instance-meta {
+    display: flex;
+    gap: 4px;
+    min-width: 0;
     font-size: var(--font-size-xs);
     font-weight: 500;
     color: var(--text-muted);
     white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
 }
 
 .instance-badges {
@@ -1270,4 +1284,146 @@
     height: auto;
     margin: 12px 0;
     border-radius: var(--radius-md);
+}
+
+
+.instance-state {
+    width: 24px;
+    height: 24px;
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-round);
+}
+
+.instance-state svg {
+    width: 15px;
+    height: 15px;
+}
+
+.instance-state.state-installed {
+    background: rgba(var(--success-rgb), 0.16);
+    color: var(--success);
+}
+
+.instance-state.state-incomplete {
+    background: rgba(var(--warning-rgb), 0.16);
+    color: var(--warning);
+}
+
+.instance-state.state-missing {
+    box-shadow: inset 0 0 0 1px var(--border);
+    color: var(--text-muted);
+    opacity: 0.6;
+}
+
+.instance-select-state:not([hidden]) {
+    display: inline-flex;
+    flex-shrink: 0;
+}
+
+.instance-actions {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    flex-shrink: 0;
+}
+
+.instance-delete-slot {
+    width: 34px;
+    height: 34px;
+    flex-shrink: 0;
+}
+
+.instance-badges {
+    position: relative;
+    z-index: var(--z-raised);
+    transform: translateX(calc(34px + 12px));
+    transition: transform 180ms var(--ease-standard);
+}
+
+.instance-elements.deletable-instance:hover .instance-badges,
+.instance-elements.deletable-instance:focus-visible .instance-badges,
+.instance-elements.deletable-instance:focus-within .instance-badges {
+    transform: translateX(0);
+}
+
+.instance-delete {
+    width: 34px;
+    height: 34px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: 1px solid transparent;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 180ms ease, background-color var(--duration-fast) ease, color var(--duration-fast) ease, border-color var(--duration-fast) ease;
+}
+
+.instance-elements:hover .instance-delete,
+.instance-elements:focus-visible .instance-delete,
+.instance-elements:focus-within .instance-delete {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.instance-delete:hover {
+    background: rgba(var(--danger-rgb), 0.12);
+    border-color: rgba(var(--danger-rgb), 0.35);
+    color: var(--danger);
+}
+
+.instance-elements.deleting-instance {
+    opacity: 0.55;
+    pointer-events: none;
+}
+
+.instances-toast {
+    position: absolute;
+    left: 50%;
+    bottom: 18px;
+    z-index: var(--z-overlay-local);
+    width: max-content;
+    max-width: calc(100% - 48px);
+    padding: 10px 18px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+    background: var(--surface-modal);
+    color: var(--color);
+    box-shadow: var(--shadow-md);
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    text-align: center;
+    opacity: 0;
+    transform: translate(-50%, 8px);
+    transition: opacity var(--duration-fast) ease, transform var(--duration-fast) ease;
+    pointer-events: none;
+}
+
+.instances-toast.toast-error {
+    border-color: rgba(var(--danger-rgb), 0.45);
+    color: var(--danger);
+}
+
+.instances-toast.visible {
+    opacity: 1;
+    transform: translate(-50%, 0);
+}
+
+.instances-toast[hidden] {
+    display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .instance-badges,
+    .instance-delete,
+    .instances-toast {
+        transition: none;
+    }
 }

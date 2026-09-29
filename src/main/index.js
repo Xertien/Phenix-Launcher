@@ -11,6 +11,7 @@ const settings = require('./services/settings.js');
 const accounts = require('./services/accounts.js');
 const auth = require('./services/auth.js');
 const game = require('./services/game.js');
+const instances = require('./services/instances.js');
 const system = require('./services/system.js');
 const updater = require('./services/updater.js');
 
@@ -71,6 +72,8 @@ function register() {
         }
     });
     handle('instances:list', LAUNCHER, () => remote.getInstanceList());
+    handle('instances:status', LAUNCHER, () => instances.status());
+    handle('instances:delete', LAUNCHER, (event, name) => isString(name, 64) ? instances.remove(name) : { error: 'invalid_name', message: "Nom d'instance invalide." });
     handle('server:status', LAUNCHER, (event, instanceName) => game.serverStatus(instanceName));
     handle('panels:load', LAUNCHER, (event, id) => system.loadPanel(id));
 

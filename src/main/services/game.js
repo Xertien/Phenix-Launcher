@@ -3,6 +3,7 @@ const { Launch, Status } = require('minecraft-java-core');
 const accounts = require('./accounts.js');
 const settings = require('./settings.js');
 const remote = require('./remote.js');
+const instanceStore = require('./instances.js');
 const { isSafePathSegment, scrubString } = require('../../assets/js/utils/security.js');
 
 class Game {
@@ -45,6 +46,7 @@ class Game {
 
     async launch(window) {
         if (this.running) return { error: 'already_running', message: 'Le jeu est déjà en cours de lancement.' };
+        if (instanceStore.deleting) return { error: 'busy', message: 'Une instance est en cours de suppression, veuillez patienter.' };
 
         let configClient = await settings.get();
         let config = await remote.getConfig().catch(() => null);
@@ -125,6 +127,8 @@ class Game {
 
         this.running = true;
         window.setProgressBar(2);
+        await settings.setInstancePending(options.name, true).catch(() => { });
+        let ready = false;
 
         launch.on('extract', extract => {
             if (!window.isDestroyed()) window.setProgressBar(2);
@@ -151,6 +155,10 @@ class Game {
         });
 
         launch.on('data', data => {
+            if (!ready) {
+                ready = true;
+                settings.setInstancePending(options.name, false).catch(() => { });
+            }
             if (!window.isDestroyed()) {
                 if (closeLauncher == 'close-launcher' && !hidden) {
                     hidden = true;

@@ -39,7 +39,9 @@ contextBridge.exposeInMainWorld('launcher', {
         get: () => invoke('news:get')
     },
     instances: {
-        list: () => invoke('instances:list')
+        list: () => invoke('instances:list'),
+        status: () => invoke('instances:status'),
+        remove: name => invoke('instances:delete', name)
     },
     server: {
         status: instanceName => invoke('server:status', instanceName)
