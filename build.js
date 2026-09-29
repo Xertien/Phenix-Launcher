@@ -6,7 +6,12 @@ const nodeFetch = require('node-fetch')
 const png2icons = require('png2icons');
 const Jimp = require('jimp');
 
-const { preductname } = require('./package.json');
+const { preductname, author } = require('./package.json');
+
+const env = name => {
+    let value = process.env[name]
+    return typeof value === 'string' && value.trim() !== '' ? value.trim() : null
+}
 
 class Index {
     async init() {
@@ -25,6 +30,7 @@ class Index {
             if (val.startsWith('--build')) {
                 let buildType = val.split('=')[1]
                 if (buildType == 'platform') return await this.buildPlatform()
+                if (buildType == 'dir') return await this.buildPlatform({ dir: true, publish: 'never' })
             }
         });
     }
@@ -33,6 +39,10 @@ class Index {
         if (fs.existsSync("./app")) fs.rmSync("./app", { recursive: true })
 
         for (let path of this.Fileslist) {
+            if (fs.statSync(path).isDirectory()) {
+                fs.mkdirSync(path.replace('src', 'app'), { recursive: true })
+                continue
+            }
             let fileName = path.split('/').pop()
             let extFile = fileName.split(".").pop()
             let folder = path.replace(`/${fileName}`, '').replace('src', 'app')
@@ -58,9 +68,65 @@ class Index {
         }
     }
 
-    async buildPlatform() {
+    windowsSigning() {
+        let publisherName = env('WIN_PUBLISHER_NAME')
+        let azure = {
+            endpoint: env('AZURE_TRUSTED_SIGNING_ENDPOINT'),
+            codeSigningAccountName: env('AZURE_TRUSTED_SIGNING_ACCOUNT'),
+            certificateProfileName: env('AZURE_TRUSTED_SIGNING_PROFILE')
+        }
+
+        if (azure.endpoint && azure.codeSigningAccountName && azure.certificateProfileName && env('AZURE_TENANT_ID') && env('AZURE_CLIENT_ID')) {
+            console.log('Windows signing: Azure Trusted Signing')
+            return {
+                azureSignOptions: {
+                    publisherName: publisherName || author.name,
+                    ...azure
+                }
+            }
+        }
+
+        if (env('WIN_CSC_LINK') || env('CSC_LINK')) {
+            console.log('Windows signing: certificate')
+            return {
+                signtoolOptions: {
+                    signingHashAlgorithms: ['sha256'],
+                    ...(publisherName ? { publisherName } : {})
+                }
+            }
+        }
+
+        console.log('Windows signing: disabled (no credentials)')
+        return {}
+    }
+
+    macSigning() {
+        let hasCertificate = Boolean(env('CSC_LINK') || env('CSC_NAME'))
+        let hasNotarization = Boolean(
+            (env('APPLE_API_KEY') && env('APPLE_API_KEY_ID') && env('APPLE_API_ISSUER')) ||
+            (env('APPLE_ID') && env('APPLE_APP_SPECIFIC_PASSWORD') && env('APPLE_TEAM_ID'))
+        )
+
+        let common = {
+            hardenedRuntime: true,
+            gatekeeperAssess: false,
+            entitlements: 'build/entitlements.mac.plist',
+            entitlementsInherit: 'build/entitlements.mac.plist'
+        }
+
+        if (!hasCertificate) {
+            console.log('macOS signing: disabled (no certificate)')
+            return { ...common, identity: null, notarize: false }
+        }
+
+        console.log(`macOS signing: Developer ID${hasNotarization ? ' + notarization' : ''}`)
+        return { ...common, notarize: hasNotarization }
+    }
+
+    async buildPlatform(options = {}) {
         await this.Obfuscate();
-        builder.build({
+        return builder.build({
+            ...options,
             config: {
                 generateUpdatesFilesForAllChannels: false,
                 appId: preductname,
@@ -69,15 +135,25 @@ class Index {
                 artifactName: "${productName}-${os}-${arch}.${ext}",
                 extraMetadata: { main: 'app/app.js' },
                 files: ["app/**/*", "package.json", "LICENSE.md"],
-                directories: { "output": "dist" },
+                directories: { "output": "dist", "buildResources": "build" },
                 compression: 'maximum',
                 asar: true,
+                electronFuses: {
+                    runAsNode: false,
+                    enableCookieEncryption: true,
+                    enableNodeOptionsEnvironmentVariable: false,
+                    enableNodeCliInspectArguments: false,
+                    enableEmbeddedAsarIntegrityValidation: true,
+                    onlyLoadAppFromAsar: true,
+                    resetAdHocDarwinSignature: true
+                },
                 publish: [{
                     provider: "github",
                     releaseType: 'release',
                 }],
                 win: {
                     icon: "./app/assets/images/icon.ico",
+                    ...this.windowsSigning(),
                     target: [{
                         target: "nsis",
                         arch: "x64"
@@ -92,7 +168,7 @@ class Index {
                 mac: {
                     icon: "./app/assets/images/icon.icns",
                     category: "public.app-category.games",
-                    identity: null,
+                    ...this.macSigning(),
                     target: [{
                         target: "dmg",
                         arch: "universal"
@@ -114,6 +190,7 @@ class Index {
             console.log('le build est terminé')
         }).catch(err => {
             console.error('Error during build!', err)
+            process.exitCode = 1
         })
     }
 

@@ -1,9 +1,8 @@
 <div class="container">
     <div class="status-server">
-        <img class="server-status-icon" src="assets/images/icon.png">
         <div class="server-status-infos">
             <div class="server-status-name">Minecraft</div>
-            <div class="server-status-text">operationeel - 0 ms</div>
+            <div class="server-status-text">Connexion au serveur...</div>
         </div>
         <div class="status-player-count">
             <div class="player-count">0</div>
@@ -17,14 +16,14 @@
             </div>
         </div>
         <div class="social-tab">
-            <div class="social-list content-scroll">
-                <div data-url="https://discord.gg/6p5cUVKcqE" class="social-block">
+            <div class="social-list">
+                <div data-url="https://discord.gg/6p5cUVKcqE" class="social-block" title="Discord">
                     <div class="icon-discord icon-social"></div>
                 </div>
 
                 <div data-url="https://creditlibrarylauncherv3huifzfjuzehbfiuhzeiuzehudjfbzessd.phe-go.com/"
-                    class="social-block">
-                    <div class="icon-copiright icon-social"></div>
+                    class="social-block" title="Crédits">
+                    <div class="icon-copyright icon-social"></div>
                 </div>
             </div>
         </div>
@@ -45,19 +44,27 @@
                             d="M5 13c0-5.088 2.903-9.436 7-11.182C16.097 3.564 19 7.912 19 13c0 .823-.076 1.626-.22 2.403l1.94 1.832a.5.5 0 0 1 .095.603l-2.495 4.575a.5.5 0 0 1-.793.114l-2.234-2.234a1 1 0 0 0-.707-.293H9.414a1 1 0 0 0-.707.293l-2.234 2.234a.5.5 0 0 1-.793-.114l-2.495-4.575a.5.5 0 0 1 .095-.603l1.94-1.832C5.077 14.626 5 13.823 5 13zm1.476 6.696l.817-.817A3 3 0 0 1 9.414 18h5.172a3 3 0 0 1 2.121.879l.817.817.982-1.8-1.1-1.04a2 2 0 0 1-.593-1.82c.124-.664.187-1.345.187-2.036 0-3.87-1.995-7.3-5-8.96C8.995 5.7 7 9.13 7 13c0 .691.063 1.372.187 2.037a2 2 0 0 1-.593 1.82l-1.1 1.039.982 1.8zM12 13a2 2 0 1 1 0-4 2 2 0 0 1 0 4z"
                             fill="currentColor"></path>
                     </svg>
-                    <svg class="btn-spinner" style="display: none;" xmlns="http://www.w3.org/2000/svg" height="20"
+                    <svg class="btn-spinner" xmlns="http://www.w3.org/2000/svg" height="20"
                         viewBox="0 0 24 24" width="20" fill="currentColor">
                         <path
                             d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z" />
                     </svg>
-                    <span class="btn-text">Launch</span>
+                    <span class="btn-text">Jouer</span>
                 </button>
-                <div class="instance-select"></div>
+                <div class="instance-select" title="Choisir une instance" role="button" tabindex="0" aria-haspopup="dialog" aria-label="Choisir une instance">
+                    <div class="instance-select-infos">
+                        <span class="instance-select-name">Chargement...</span>
+                        <span class="instance-select-meta" hidden></span>
+                    </div>
+                    <svg class="instance-select-chevron" xmlns="http://www.w3.org/2000/svg" height="20" viewBox="0 -960 960 960" width="20" fill="currentColor" aria-hidden="true">
+                        <path d="M480-120 300-300l58-58 122 122 122-122 58 58-180 180ZM358-598l-58-58 180-180 180 180-58 58-122-122-122 122Z" />
+                    </svg>
+                </div>
             </div>
         </div>
 
         <!-- From Uiverse.io by vinodjangid07 -->
-        <div class="settings-btn">
+        <div class="settings-btn" title="Paramètres">
             <svg xmlns="http://www.w3.org/2000/svg" height="28" viewBox="0 0 24 24" width="28" fill="currentColor">
                 <path
                     d="M19.14 12.94c.04-.31.06-.63.06-.94 0-.31-.02-.63-.06-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.04.31-.06.63-.06.94s.02.63.06.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z" />
@@ -67,42 +74,48 @@
     </div>
 
     <div class="instance-popup">
-        <div class="instances-tab">
-            <div class="close-popup icon-close"></div>
-            <p id="instance-count-text">Instance(s)</p>
-            <div class="instances-List"></div>
+        <div class="instances-tab" role="dialog" aria-modal="true" aria-label="Instances">
+            <div class="close-popup close-instance-popup" title="Fermer"></div>
+            <div class="instances-search">
+                <svg class="instances-search-icon" xmlns="http://www.w3.org/2000/svg" height="20" viewBox="0 -960 960 960" width="20" fill="currentColor">
+                    <path d="M784-120 532-372q-30 24-69 38t-83 14q-109 0-184.5-75.5T120-580q0-109 75.5-184.5T380-840q109 0 184.5 75.5T640-580q0 44-14 83t-38 69l252 252-56 56ZM380-400q75 0 127.5-52.5T560-580q0-75-52.5-127.5T380-760q-75 0-127.5 52.5T200-580q0 75 52.5 127.5T380-400Z" />
+                </svg>
+                <input type="text" class="instances-search-input" placeholder="Rechercher une instance..." aria-label="Rechercher une instance" autocomplete="off" spellcheck="false">
+            </div>
+            <div class="instances-list" role="listbox" aria-label="Instances"></div>
         </div>
     </div>
 
     <div class="player-popup">
-        <div class="player-tab" style="position:relative;">
-            <div class="close-popup icon-close close-player-popup"
-                style="top: 15px; right: 15px; width: 28px; height: 28px;"></div>
+        <div class="player-tab">
+            <div class="close-popup close-player-popup" title="Fermer"></div>
 
-            <p class="titre-account-modal"
-                style="text-align:center; width:100%; font-size:1.4rem; font-weight:700; margin-bottom:15px; margin-top:5px; color:#fff;">
-                Mes Comptes</p>
+            <p class="titre-account-modal">Mes comptes</p>
 
-            <div class="accounts-list-home content-scroll"
-                style="width:100%; max-height:300px; overflow-y:auto; display:flex; flex-direction:column; gap:10px;">
-            </div>
+            <div class="accounts-list-home"></div>
 
-            <div class="player-actions"
-                style="display:flex; justify-content:center; width:100%; margin-top:20px; box-sizing: border-box;">
-                <div class="player-option-btn-modal" id="add-account-modal"
-                    style="width: 50px; height: 50px; padding: 0; display:flex; align-items:center; justify-content:center; border-radius:50%; font-size:1.5rem;">
+            <div class="player-actions">
+                <div class="player-option-btn-modal" id="add-account-modal" title="Ajouter un compte">
                     <svg xmlns="http://www.w3.org/2000/svg" height="32" viewBox="0 -960 960 960" width="32"
                         fill="currentColor">
                         <path d="M440-440H200v-80h240v-240h80v240h240v80H520v240h-80v-240Z" />
+                    </svg>
                 </div>
             </div>
         </div>
+    </div>
 
-        <div class="news-popup">
-            <div class="news-modal-tab">
-                <div class="close-popup icon-close close-news-popup"></div>
-                <p class="titre-news-modal">Toutes les actualités</p>
-                <div class="news-modal-list content-scroll"></div>
-            </div>
+    <div class="news-popup">
+        <div class="news-modal-tab" role="dialog" aria-modal="true" aria-labelledby="news-modal-title" tabindex="-1">
+            <button type="button" class="close-popup close-news-popup" title="Fermer" aria-label="Fermer"></button>
+            <header class="news-modal-header">
+                <h2 id="news-modal-title" class="news-modal-title"></h2>
+                <div class="news-modal-meta">
+                    <span class="news-modal-author"></span>
+                    <time class="news-modal-date"></time>
+                </div>
+            </header>
+            <div class="news-modal-content"></div>
         </div>
     </div>
+</div>

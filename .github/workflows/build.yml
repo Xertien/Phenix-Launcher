@@ -1,33 +1,42 @@
-# module du helios launcher
 name: Launcher Build
 on:
   push:
     branches: [ master ]
 
+permissions: {}
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   create-release:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
-
-      - name: Get version
-        run: echo "version=$(jq -r .version package.json)" >> $GITHUB_ENV
-      
-      - name: Create Release
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          tag_name: ${{ env.version }}
-          release_name: release ${{ env.version }}
-          draft: false
-          prerelease: ${{ contains(env.version, 'beta') || contains(env.version, 'alpha') }}
+          persist-credentials: false
+
+      - name: Create Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          TARGET_SHA: ${{ github.sha }}
+        run: |
+          version="$(jq -r .version package.json)"
+          prerelease=()
+          if [[ "$version" == *beta* || "$version" == *alpha* ]]; then prerelease=(--prerelease); fi
+          gh release create "$version" --repo "$REPO" --target "$TARGET_SHA" --title "release $version" --notes "" "${prerelease[@]}"
+        shell: bash
 
   build-launcher:
     needs: create-release
     runs-on: ${{ matrix.os }}
+    permissions:
+      contents: write
 
     strategy:
       matrix:
@@ -35,15 +44,17 @@ jobs:
 
     steps:
       - name: Check out Git repository
-        uses: actions/checkout@v1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
 
       - name: Set up Node
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
         with:
-          node-version: 18.x
+          node-version: 24.x
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
         with:
           python-version: 3.x
 
@@ -51,8 +62,60 @@ jobs:
         run: npm ci
         shell: bash
 
+      - name: Configure code signing
+        env:
+          RUNNER_OS_NAME: ${{ runner.os }}
+          WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+          WIN_PUBLISHER_NAME: ${{ vars.WIN_PUBLISHER_NAME }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          AZURE_TRUSTED_SIGNING_ENDPOINT: ${{ vars.AZURE_TRUSTED_SIGNING_ENDPOINT }}
+          AZURE_TRUSTED_SIGNING_ACCOUNT: ${{ vars.AZURE_TRUSTED_SIGNING_ACCOUNT }}
+          AZURE_TRUSTED_SIGNING_PROFILE: ${{ vars.AZURE_TRUSTED_SIGNING_PROFILE }}
+          MAC_CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
+          MAC_CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_API_KEY_P8: ${{ secrets.APPLE_API_KEY_P8 }}
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+        run: |
+          export_if_set() {
+            local name="$1" value="$2"
+            if [ -n "$value" ]; then echo "$name=$value" >> "$GITHUB_ENV"; fi
+          }
+          if [ "$RUNNER_OS_NAME" = "Windows" ]; then
+            export_if_set WIN_CSC_LINK "$WIN_CSC_LINK"
+            export_if_set WIN_CSC_KEY_PASSWORD "$WIN_CSC_KEY_PASSWORD"
+            export_if_set WIN_PUBLISHER_NAME "$WIN_PUBLISHER_NAME"
+            export_if_set AZURE_TENANT_ID "$AZURE_TENANT_ID"
+            export_if_set AZURE_CLIENT_ID "$AZURE_CLIENT_ID"
+            export_if_set AZURE_CLIENT_SECRET "$AZURE_CLIENT_SECRET"
+            export_if_set AZURE_TRUSTED_SIGNING_ENDPOINT "$AZURE_TRUSTED_SIGNING_ENDPOINT"
+            export_if_set AZURE_TRUSTED_SIGNING_ACCOUNT "$AZURE_TRUSTED_SIGNING_ACCOUNT"
+            export_if_set AZURE_TRUSTED_SIGNING_PROFILE "$AZURE_TRUSTED_SIGNING_PROFILE"
+          fi
+          if [ "$RUNNER_OS_NAME" = "macOS" ]; then
+            export_if_set CSC_LINK "$MAC_CSC_LINK"
+            export_if_set CSC_KEY_PASSWORD "$MAC_CSC_KEY_PASSWORD"
+            export_if_set APPLE_ID "$APPLE_ID"
+            export_if_set APPLE_APP_SPECIFIC_PASSWORD "$APPLE_APP_SPECIFIC_PASSWORD"
+            export_if_set APPLE_TEAM_ID "$APPLE_TEAM_ID"
+            if [ -n "$APPLE_API_KEY_P8" ] && [ -n "$APPLE_API_KEY_ID" ] && [ -n "$APPLE_API_ISSUER" ]; then
+              key_path="$RUNNER_TEMP/AuthKey_${APPLE_API_KEY_ID}.p8"
+              printf '%s' "$APPLE_API_KEY_P8" > "$key_path"
+              echo "APPLE_API_KEY=$key_path" >> "$GITHUB_ENV"
+              echo "APPLE_API_KEY_ID=$APPLE_API_KEY_ID" >> "$GITHUB_ENV"
+              echo "APPLE_API_ISSUER=$APPLE_API_ISSUER" >> "$GITHUB_ENV"
+            fi
+          fi
+        shell: bash
+
       - name: Build
         env:
-          GH_TOKEN: ${{ secrets.github_token }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npm run build
         shell: bash

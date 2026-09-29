@@ -3,48 +3,56 @@
  * @license CC-BY-NC 4.0 - https://creativecommons.org/licenses/by-nc/4.0
  */
 
-const Sentry = require('@sentry/electron/renderer');
-
-Sentry.init({
-    dsn: "https://38394ab6f5576f5332b25abe3fdb3a80@o4509386054500352.ingest.de.sentry.io/4510526799151184",
-    integrations: [
-        Sentry.captureConsoleIntegration({ levels: ['error', 'warn'] }),
-    ],
-});
-
-const { ipcRenderer } = require('electron')
-const { Status } = require('minecraft-java-core')
-const fs = require('fs');
-const pkg = require('../package.json');
-
 import config from './utils/config.js';
-import database from './utils/database.js';
 import logger from './utils/logger.js';
 import popup from './utils/popup.js';
 import { skin2D } from './utils/skin.js';
 import slider from './utils/slider.js';
 
+const { escapeHTML, sanitizeHTML, decodeEntities, isSafeExternalUrl, isSafePathSegment } = window.security;
+const pkg = await window.launcher.app.info().catch(() => ({ name: 'Launcher' }));
+
+let currentDark = null;
+let themeWatcher = null;
+
+async function getThemeSetting() {
+    let configClient = await window.launcher.settings.get().catch(() => null);
+    return configClient?.launcher_config?.theme || 'dark';
+}
+
 async function setBackground(theme) {
     if (typeof theme == 'undefined') {
-        let databaseLauncher = new database();
-        let configClient = await databaseLauncher.readData('configClient');
-        theme = configClient?.launcher_config?.theme || "auto"
-        theme = await ipcRenderer.invoke('is-dark-theme', theme).then(res => res)
+        theme = await window.launcher.theme.isDark(await getThemeSetting()).catch(() => true);
     }
+    let isDark = !!theme;
+    currentDark = isDark;
     let background
     let body = document.body;
-    body.className = theme ? 'dark global' : 'light global';
-    if (fs.existsSync(`${__dirname}/assets/images/background/easterEgg`) && Math.random() < 0.005) {
-        let backgrounds = fs.readdirSync(`${__dirname}/assets/images/background/easterEgg`);
-        let Background = backgrounds[Math.floor(Math.random() * backgrounds.length)];
-        background = `url(./assets/images/background/easterEgg/${Background})`;
-    } else if (fs.existsSync(`${__dirname}/assets/images/background/${theme ? 'dark' : 'light'}`)) {
-        let backgrounds = fs.readdirSync(`${__dirname}/assets/images/background/${theme ? 'dark' : 'light'}`);
-        let Background = backgrounds[Math.floor(Math.random() * backgrounds.length)];
-        background = `linear-gradient(#00000080, #00000080), url(./assets/images/background/${theme ? 'dark' : 'light'}/${Background})`;
+    body.className = isDark ? 'dark global' : 'light global';
+    let image = await window.launcher.theme.background(isDark).catch(() => null);
+    if (currentDark !== isDark) return;
+    let overlay = isDark ? '#00000080' : '#E9E6F285';
+    if (image?.easterEgg) {
+        background = `url("${image.path}")`;
+    } else if (image?.path) {
+        background = `linear-gradient(${overlay}, ${overlay}), url("${image.path}")`;
     }
-    body.style.backgroundImage = background ? background : theme ? '#000' : '#fff';
+    body.style.backgroundImage = background ? background : 'none';
     body.style.backgroundSize = 'cover';
+}
+
+async function applyTheme(theme) {
+    let isDark = await window.launcher.theme.isDark(theme).catch(() => true);
+    if (isDark === currentDark) return;
+    await setBackground(isDark);
+}
+
+function watchTheme() {
+    if (themeWatcher) return;
+    themeWatcher = window.launcher.theme.onUpdated(async () => {
+        let theme = await getThemeSetting();
+        if (theme === 'auto') await applyTheme('auto');
+    });
 }
 
 async function changePanel(id) {
@@ -54,23 +62,19 @@ async function changePanel(id) {
     panel.classList.add("active");
 }
 
-async function appdata() {
-    return await ipcRenderer.invoke('appData').then(path => path)
-}
-
 async function addAccount(data) {
     let skin = false
-    if (data?.profile?.skins[0]?.base64) skin = await new skin2D().creatHeadTexture(data.profile.skins[0].base64);
+    if (data?.skin) skin = await new skin2D().creatHeadTexture(data.skin);
     let div = document.createElement("div");
     div.classList.add("account");
     div.id = data.ID;
     div.innerHTML = `
         <div class="profile-image" ${skin ? 'style="background-image: url(' + skin + ');"' : ''}></div>
         <div class="profile-infos">
-            <div class="profile-pseudo">${data.name}</div>
-            <div class="profile-uuid">${data.uuid}</div>
+            <div class="profile-pseudo">${escapeHTML(data.name)}</div>
+            <div class="profile-uuid">${escapeHTML(data.uuid)}</div>
         </div>
-        <div class="delete-profile" id="${data.ID}">
+        <div class="delete-profile" id="${escapeHTML(data.ID)}">
             <div class="icon-account-delete delete-profile-icon"></div>
         </div>
     `
@@ -78,63 +82,65 @@ async function addAccount(data) {
 }
 
 async function accountSelect(data) {
-    let account = document.getElementById(`${data.ID}`);
+    let account = document.getElementById(`${data?.ID}`);
     let activeAccount = document.querySelector('.account-select')
 
     if (activeAccount) activeAccount.classList.toggle('account-select');
     if (account) account.classList.add('account-select');
-    if (data?.profile?.skins[0]?.base64) headplayer(data.profile.skins[0].base64);
+    if (data?.skin) headplayer(data.skin);
 }
 
 async function headplayer(skinBase64) {
     let skin = await new skin2D().creatHeadTexture(skinBase64);
-    document.querySelector(".player-head").style.backgroundImage = `url(${skin})`;
+    if (skin) document.querySelector(".player-head").style.backgroundImage = `url(${skin})`;
 }
 
-async function setStatus(opt) {
+async function setStatus(instance) {
     let nameServerElement = document.querySelector('.server-status-name')
     let statusServerElement = document.querySelector('.server-status-text')
     let playersOnline = document.querySelector('.status-player-count .player-count')
 
-    if (!opt) {
+    if (!instance?.status) {
         statusServerElement.classList.add('red')
-        statusServerElement.innerHTML = `Ferme - 0 ms`
+        statusServerElement.innerHTML = `Hors ligne - 0 ms`
         document.querySelector('.status-player-count').classList.add('red')
         playersOnline.innerHTML = '0'
         return
     }
 
-    let { ip, port, nameServer } = opt
-    nameServerElement.innerHTML = nameServer
-    let status = new Status(ip, port);
-    let statusServer = await status.getStatus().then(res => res).catch(err => err);
+    nameServerElement.textContent = decodeEntities(instance.status.nameServer)
+    let statusServer = await window.launcher.server.status(instance.name).catch(() => ({ online: false }));
 
-    if (!statusServer.error) {
+    if (statusServer?.online) {
         statusServerElement.classList.remove('red')
         document.querySelector('.status-player-count').classList.remove('red')
-        statusServerElement.innerHTML = `En ligne - ${statusServer.ms} ms`
-        playersOnline.innerHTML = statusServer.playersConnect
+        statusServerElement.textContent = `En ligne - ${statusServer.ms} ms`
+        playersOnline.textContent = statusServer.playersConnect
     } else {
         statusServerElement.classList.add('red')
-        statusServerElement.innerHTML = `Ferme - 0 ms`
+        statusServerElement.innerHTML = `Hors ligne - 0 ms`
         document.querySelector('.status-player-count').classList.add('red')
         playersOnline.innerHTML = '0'
     }
 }
 
-
 export {
-    appdata as appdata,
     changePanel as changePanel,
     config as config,
-    database as database,
     logger as logger,
     popup as popup,
     setBackground as setBackground,
+    applyTheme as applyTheme,
+    watchTheme as watchTheme,
     skin2D as skin2D,
     addAccount as addAccount,
     accountSelect as accountSelect,
     slider as Slider,
     pkg as pkg,
-    setStatus as setStatus
+    setStatus as setStatus,
+    escapeHTML as escapeHTML,
+    sanitizeHTML as sanitizeHTML,
+    decodeEntities as decodeEntities,
+    isSafeExternalUrl as isSafeExternalUrl,
+    isSafePathSegment as isSafePathSegment
 }

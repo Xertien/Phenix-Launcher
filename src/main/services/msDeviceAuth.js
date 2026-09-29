@@ -1,13 +1,8 @@
-/**
- * @author Xertien
- * @license CC-BY-NC 4.0 - https://creativecommons.org/licenses/by-nc/4.0
- */
-
 const crypto = require('crypto');
 
 async function getBase64(url) {
     try {
-        const response = await fetch(url);
+        const response = await fetch(String(url).replace(/^http:\/\//i, 'https://'));
         if (response.ok) {
             const arrayBuffer = await response.arrayBuffer();
             const buffer = Buffer.from(arrayBuffer);
@@ -34,7 +29,7 @@ class MicrosoftDeviceAuth {
             const response = await fetch(this.deviceCodeEndpoint, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: `client_id=${this.client_id}&scope=${encodeURIComponent(this.scope)}`
+                body: new URLSearchParams({ client_id: this.client_id, scope: this.scope }).toString()
             });
 
             const data = await response.json();
@@ -74,7 +69,7 @@ class MicrosoftDeviceAuth {
                 const response = await fetch(this.tokenEndpoint, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: `grant_type=urn:ietf:params:oauth:grant-type:device_code&client_id=${this.client_id}&code=${device_code}`
+                    body: new URLSearchParams({ grant_type: 'urn:ietf:params:oauth:grant-type:device_code', client_id: this.client_id, code: device_code }).toString()
                 });
 
                 const data = await response.json();
@@ -121,16 +116,12 @@ class MicrosoftDeviceAuth {
         this.polling = false;
     }
 
-    /**
-     * Refresh a Microsoft account using a refresh token
-     * @param {object} account - The account object to refresh
-     */
     async refresh(account) {
         try {
             const response = await fetch(this.tokenEndpoint, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: `client_id=${this.client_id}&scope=${encodeURIComponent(this.scope)}&refresh_token=${account.refresh_token}&grant_type=refresh_token`
+                body: new URLSearchParams({ client_id: this.client_id, scope: this.scope, refresh_token: account.refresh_token, grant_type: 'refresh_token' }).toString()
             });
 
             const data = await response.json();

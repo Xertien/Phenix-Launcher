@@ -11,15 +11,14 @@
 .login-tabs {
     display: none;
     flex-direction: column;
-    align-items: center;
-    gap: 30px;
+    align-items: stretch;
     padding: 40px;
-    background: rgba(30, 30, 40, 0.8);
+    background: var(--surface-glass-strong);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
-    border-radius: 24px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+    border-radius: var(--radius-xl);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-lg);
     max-width: 450px;
     width: 100%;
 }
@@ -30,7 +29,11 @@
     color: var(--color);
     text-align: center;
     letter-spacing: 0.5px;
-    margin-bottom: 20px;
+    margin: 0;
+}
+
+.login-tabs > * + * {
+    margin-top: 24px;
 }
 
 .login-options {
@@ -49,13 +52,13 @@
     padding: 16px 32px;
     font-size: 1.1rem;
     font-weight: 700;
-    color: white;
-    background: linear-gradient(135deg, var(--element-color) 0%, #6200ea 100%);
+    color: var(--on-accent);
+    background: var(--gradient-primary);
     border: none;
-    border-radius: 50px;
-    box-shadow: 0 8px 32px rgba(124, 77, 255, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.3);
+    border-radius: var(--radius-pill);
+    box-shadow: var(--shadow-accent-lg), inset 0 1px 1px rgba(255, 255, 255, 0.3);
     cursor: pointer;
-    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    transition: all var(--duration-base) var(--ease-spring);
     text-transform: uppercase;
     letter-spacing: 1.5px;
     position: relative;
@@ -75,12 +78,12 @@
     height: 100%;
     background: linear-gradient(rgba(255, 255, 255, 0.1), transparent);
     opacity: 0;
-    transition: opacity 0.3s;
+    transition: opacity var(--duration-base);
 }
 
 .connect:hover {
     transform: scale(1.03) translateY(-3px);
-    box-shadow: 0 12px 40px rgba(124, 77, 255, 0.7), inset 0 1px 1px rgba(255, 255, 255, 0.4);
+    box-shadow: var(--shadow-accent-xl), inset 0 1px 1px rgba(255, 255, 255, 0.4);
 }
 
 .connect:hover::before {
@@ -89,25 +92,24 @@
 
 .connect:active {
     transform: scale(0.98) translateY(0);
-    box-shadow: 0 4px 16px rgba(124, 77, 255, 0.4);
+    box-shadow: 0 4px 16px rgba(var(--element-rgb), 0.4);
 }
 
 .cancel {
     width: 100%;
     padding: 14px 28px;
-    font-size: 1rem;
+    font-size: var(--font-size-base);
     font-weight: 600;
     color: var(--color);
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 50px;
+    background: var(--surface-hover);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-pill);
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: all var(--duration-base) ease;
 }
 
 .cancel:hover {
-    background: rgba(255, 255, 255, 0.15);
-    border-color: rgba(255, 255, 255, 0.3);
+    background: var(--border-strong);
     transform: translateY(-2px);
 }
 
@@ -121,57 +123,22 @@
 .input-login input {
     width: 100%;
     padding: 16px 20px;
-    font-size: 1rem;
+    font-size: var(--font-size-base);
     color: var(--color);
-    background: rgba(0, 0, 0, 0.3);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 12px;
+    background: var(--input-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
     outline: none;
-    transition: all 0.3s ease;
+    transition: all var(--duration-base) ease;
     box-sizing: border-box;
 }
 
 .input-login input::placeholder {
-    color: rgba(255, 255, 255, 0.4);
+    color: var(--input-placeholder);
 }
 
 .input-login input:focus {
     border-color: var(--element-color);
-    background: rgba(0, 0, 0, 0.5);
-    box-shadow: 0 0 0 3px rgba(124, 77, 255, 0.15);
-}
-
-.light .login-tabs {
-    background: rgba(255, 255, 255, 0.9);
-    border: 1px solid rgba(0, 0, 0, 0.1);
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
-}
-
-.light .login-text {
-    color: #1a1a1a;
-}
-
-.light .cancel {
-    color: #333;
-    background: rgba(0, 0, 0, 0.05);
-    border: 1px solid rgba(0, 0, 0, 0.1);
-}
-
-.light .cancel:hover {
-    background: rgba(0, 0, 0, 0.1);
-}
-
-.light .input-login input {
-    color: #1a1a1a;
-    background: rgba(0, 0, 0, 0.03);
-    border: 1px solid rgba(0, 0, 0, 0.1);
-}
-
-.light .input-login input::placeholder {
-    color: rgba(0, 0, 0, 0.4);
-}
-
-.light .input-login input:focus {
-    border-color: var(--element-color);
-    background: rgba(0, 0, 0, 0.05);
+    background: var(--input-bg-focus);
+    box-shadow: var(--focus-ring);
 }

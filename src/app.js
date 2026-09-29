@@ -4,22 +4,29 @@
  */
 
 const Sentry = require('@sentry/electron/main');
+const { sentryBeforeSend, sentryBeforeBreadcrumb, isSafeExternalUrl } = require('./assets/js/utils/security.js');
 
 Sentry.init({
     dsn: "https://38394ab6f5576f5332b25abe3fdb3a80@o4509386054500352.ingest.de.sentry.io/4510526799151184",
-    integrations: [
+    sendDefaultPii: false,
+    ipcMode: Sentry.IPCMode.Classic,
+    integrations: defaults => [
+        ...defaults.filter(integration => integration.name !== 'PreloadInjection'),
         Sentry.captureConsoleIntegration({ levels: ['error', 'warn'] }),
     ],
+    beforeSend: sentryBeforeSend,
+    beforeBreadcrumb: sentryBeforeBreadcrumb,
 });
 
-const { app, ipcMain, nativeTheme } = require('electron');
-const { autoUpdater } = require('electron-updater')
+const { app, shell } = require('electron');
 
 const path = require('path');
 const fs = require('fs');
 
 const UpdateWindow = require("./assets/js/windows/updateWindow.js");
 const MainWindow = require("./assets/js/windows/mainWindow.js");
+const services = require('./main/index.js');
+const database = require('./main/services/database.js');
 
 let dev = process.env.NODE_ENV === 'dev';
 
@@ -32,167 +39,37 @@ if (dev) {
     app.setPath('appData', appdata)
 }
 
+app.on('web-contents-created', (event, contents) => {
+    contents.setWindowOpenHandler(({ url }) => {
+        if (isSafeExternalUrl(url)) shell.openExternal(url);
+        return { action: 'deny' };
+    });
+
+    contents.on('will-navigate', (e, url) => {
+        if (url.startsWith('file://')) return;
+        e.preventDefault();
+        if (isSafeExternalUrl(url)) shell.openExternal(url);
+    });
+
+    contents.on('will-redirect', (e, url) => {
+        if (!url.startsWith('file://')) e.preventDefault();
+    });
+
+    contents.on('will-attach-webview', e => e.preventDefault());
+});
+
+database.relocateLegacy();
+
 if (!app.requestSingleInstanceLock()) app.quit();
-else app.whenReady().then(() => {
+else app.whenReady().then(async () => {
+    try {
+        await services.init();
+    } catch (error) {
+        console.error(`[Launcher] Initialisation impossible: ${error?.message || error}`);
+    }
+    services.register();
     if (dev) return MainWindow.createWindow()
     UpdateWindow.createWindow()
 });
 
-ipcMain.on('main-window-open', () => MainWindow.createWindow())
-ipcMain.on('main-window-dev-tools', () => MainWindow.getWindow().webContents.openDevTools({ mode: 'detach' }))
-ipcMain.on('main-window-dev-tools-close', () => MainWindow.getWindow().webContents.closeDevTools())
-ipcMain.on('main-window-close', () => MainWindow.destroyWindow())
-ipcMain.on('main-window-reload', () => MainWindow.getWindow().reload())
-ipcMain.on('main-window-progress', (event, options) => MainWindow.getWindow().setProgressBar(options.progress / options.size))
-ipcMain.on('main-window-progress-reset', () => MainWindow.getWindow().setProgressBar(-1))
-ipcMain.on('main-window-progress-load', () => MainWindow.getWindow().setProgressBar(2))
-ipcMain.on('main-window-minimize', () => MainWindow.getWindow().minimize())
-
-ipcMain.on('update-window-close', () => UpdateWindow.destroyWindow())
-ipcMain.on('update-window-dev-tools', () => UpdateWindow.getWindow().webContents.openDevTools({ mode: 'detach' }))
-ipcMain.on('update-window-progress', (event, options) => UpdateWindow.getWindow().setProgressBar(options.progress / options.size))
-ipcMain.on('update-window-progress-reset', () => UpdateWindow.getWindow().setProgressBar(-1))
-ipcMain.on('update-window-progress-load', () => UpdateWindow.getWindow().setProgressBar(2))
-
-ipcMain.handle('path-user-data', () => app.getPath('userData'))
-ipcMain.handle('appData', e => app.getPath('appData'))
-
-ipcMain.on('main-window-maximize', () => {
-    if (MainWindow.getWindow().isMaximized()) {
-        MainWindow.getWindow().unmaximize();
-    } else {
-        MainWindow.getWindow().maximize();
-    }
-})
-
-ipcMain.on('main-window-hide', () => MainWindow.getWindow().hide())
-ipcMain.on('main-window-show', () => MainWindow.getWindow().show())
-
-const MicrosoftDeviceAuth = require('./assets/js/utils/msDeviceAuth.js');
-
-const activeAuthSessions = new Map();
-
-ipcMain.handle('Microsoft-device-code-start', async (event, client_id) => {
-    console.log('[Auth] Starting Microsoft Device Code authentication with client_id:', client_id);
-    try {
-        const auth = new MicrosoftDeviceAuth(client_id);
-        const sessionId = Date.now().toString();
-        activeAuthSessions.set(sessionId, auth);
-
-        const deviceCode = await auth.requestDeviceCode();
-        if (deviceCode.error) {
-            activeAuthSessions.delete(sessionId);
-            Sentry.captureMessage(`[Auth] Device code request error: ${JSON.stringify(deviceCode)}`, 'error');
-            return { error: deviceCode.error, errorMessage: deviceCode.errorMessage };
-        }
-
-        return {
-            sessionId,
-            user_code: deviceCode.user_code,
-            verification_uri: deviceCode.verification_uri,
-            expires_in: deviceCode.expires_in,
-            device_code: deviceCode.device_code,
-            interval: deviceCode.interval
-        };
-    } catch (error) {
-        console.error('[Auth] Device code error:', error);
-        Sentry.captureException(error);
-        return { error: 'exception', errorMessage: error.message };
-    }
-});
-
-ipcMain.handle('Microsoft-device-code-poll', async (event, { sessionId, device_code, interval, expires_in }) => {
-    console.log('[Auth] Polling for Microsoft auth completion, session:', sessionId);
-    try {
-        const auth = activeAuthSessions.get(sessionId);
-        if (!auth) {
-            return { error: 'session_not_found', errorMessage: 'Auth session not found' };
-        }
-
-        const tokenResult = await auth.pollForToken(device_code, interval, expires_in);
-
-        if (tokenResult.error) {
-            activeAuthSessions.delete(sessionId);
-            if (tokenResult.error !== 'cancelled') {
-                Sentry.captureMessage(`[Auth] Device code poll error: ${JSON.stringify(tokenResult)}`, 'error');
-            }
-            return tokenResult;
-        }
-
-        const result = await auth.exchangeForMinecraft(tokenResult);
-        activeAuthSessions.delete(sessionId);
-
-        if (result.error) {
-            Sentry.captureMessage(`[Auth] Minecraft exchange error: ${JSON.stringify(result)}`, 'error');
-        }
-
-        console.log('[Auth] Device code auth result:', JSON.stringify(result, null, 2));
-        return result;
-    } catch (error) {
-        console.error('[Auth] Device code poll error:', error);
-        activeAuthSessions.delete(sessionId);
-        Sentry.captureException(error);
-        return { error: 'exception', errorMessage: error.message };
-    }
-});
-
-ipcMain.handle('Microsoft-device-code-cancel', async (event, sessionId) => {
-    console.log('[Auth] Cancelling Microsoft auth session:', sessionId);
-    const auth = activeAuthSessions.get(sessionId);
-    if (auth) {
-        auth.cancel();
-        activeAuthSessions.delete(sessionId);
-    }
-    return { success: true };
-});
-
-ipcMain.handle('is-dark-theme', (_, theme) => {
-    if (theme === 'dark') return true
-    if (theme === 'light') return false
-    return nativeTheme.shouldUseDarkColors;
-})
-
 app.on('window-all-closed', () => app.quit());
-
-autoUpdater.autoDownload = false;
-
-ipcMain.handle('update-app', async () => {
-    return await new Promise(async (resolve, reject) => {
-        autoUpdater.checkForUpdates().then(res => {
-            resolve(res);
-        }).catch(error => {
-            reject({
-                error: true,
-                message: error
-            })
-        })
-    })
-})
-
-autoUpdater.on('update-available', () => {
-    const updateWindow = UpdateWindow.getWindow();
-    if (updateWindow) updateWindow.webContents.send('updateAvailable');
-});
-
-ipcMain.on('start-update', () => {
-    autoUpdater.downloadUpdate();
-})
-
-autoUpdater.on('update-not-available', () => {
-    const updateWindow = UpdateWindow.getWindow();
-    if (updateWindow) updateWindow.webContents.send('update-not-available');
-});
-
-autoUpdater.on('update-downloaded', () => {
-    autoUpdater.quitAndInstall();
-});
-
-autoUpdater.on('download-progress', (progress) => {
-    const updateWindow = UpdateWindow.getWindow();
-    if (updateWindow) updateWindow.webContents.send('download-progress', progress);
-})
-
-autoUpdater.on('error', (err) => {
-    const updateWindow = UpdateWindow.getWindow();
-    if (updateWindow) updateWindow.webContents.send('error', err);
-});

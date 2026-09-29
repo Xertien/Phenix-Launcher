@@ -3,15 +3,12 @@
  * @license CC-BY-NC 4.0 - https://creativecommons.org/licenses/by-nc/4.0
  */
 
-import { changePanel, accountSelect, database, Slider, config, setStatus, popup, appdata, setBackground } from '../utils.js'
-const { ipcRenderer } = require('electron');
-const os = require('os');
+import { changePanel, accountSelect, addAccount, Slider, config, setStatus, popup, applyTheme, escapeHTML } from '../utils.js'
 
 class Settings {
     static id = "settings";
     async init(config) {
         this.config = config;
-        this.db = new database();
         this.navBTN()
         this.accounts()
         this.ram()
@@ -65,38 +62,38 @@ class Settings {
                     if (id == 'add') {
                         popupAccount.openPopup({
                             title: 'Connexion Microsoft',
-                            content: '<div class="loader"></div><p style="text-align: center; margin-top: 10px;">Obtention du code...</p>',
+                            content: '<div class="loader"></div><p class="popup-loader-text">Obtention du code...</p>',
                             color: 'var(--color)'
                         });
 
                         try {
-                            const deviceCodeResult = await ipcRenderer.invoke('Microsoft-device-code-start', this.config.client_id);
+                            const deviceCodeResult = await window.launcher.auth.microsoft.start();
 
                             if (deviceCodeResult.error) {
                                 popupAccount.openPopup({
                                     title: 'Erreur',
-                                    content: `${deviceCodeResult.error}: ${deviceCodeResult.errorMessage || 'Erreur inconnue'}`,
+                                    content: escapeHTML(`${deviceCodeResult.error}: ${deviceCodeResult.errorMessage || 'Erreur inconnue'}`),
                                     color: 'red',
                                     options: true
                                 });
                                 return;
                             }
 
-                            const { sessionId, user_code, verification_uri, device_code, interval, expires_in } = deviceCodeResult;
+                            const { sessionId, user_code } = deviceCodeResult;
 
                             const codeHtml = `
-                                <div style="text-align: center;">
-                                    <p style="margin-bottom: 15px;">Ouvrez votre navigateur et entrez ce code :</p>
-                                    <div style="background: rgba(124, 77, 255, 0.2); border-radius: 12px; padding: 20px; margin: 15px 0; display: flex; align-items: center; justify-content: center; gap: 15px;">
-                                        <span style="font-size: 2rem; font-weight: bold; letter-spacing: 5px; font-family: monospace;">${user_code}</span>
-                                        <button id="copy-code-btn-settings" style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; padding: 8px 12px; cursor: pointer; color: var(--color); transition: all 0.2s ease;" title="Copier le code">
+                                <div class="device-code">
+                                    <p class="device-code-intro">Ouvrez votre navigateur et entrez ce code :</p>
+                                    <div class="device-code-box">
+                                        <span class="device-code-value">${escapeHTML(user_code)}</span>
+                                        <button id="copy-code-btn-settings" class="device-code-copy" title="Copier le code">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
                                         </button>
                                     </div>
-                                    <p id="copy-feedback-settings" style="font-size: 0.85rem; color: #4caf50; opacity: 0; margin-bottom: 10px; transition: opacity 0.2s;">Code copié !</p>
-                                    <button id="open-browser-btn-settings" class="popup-button" style="margin-bottom: 15px;">Ouvrir le navigateur</button>
-                                    <div class="loader" style="margin: 15px auto;"></div>
-                                    <p style="font-size: 0.85rem; opacity: 0.7;">En attente de connexion...</p>
+                                    <p id="copy-feedback-settings" class="device-code-feedback">Code copié !</p>
+                                    <button id="open-browser-btn-settings" class="popup-button">Ouvrir le navigateur</button>
+                                    <div class="loader"></div>
+                                    <p class="device-code-hint">En attente de connexion...</p>
                                 </div>
                             `;
 
@@ -108,65 +105,57 @@ class Settings {
                             });
 
                             setTimeout(() => {
-                                const { shell, clipboard } = require('electron');
                                 const openBtn = document.getElementById('open-browser-btn-settings');
                                 const copyBtn = document.getElementById('copy-code-btn-settings');
                                 const copyFeedback = document.getElementById('copy-feedback-settings');
 
-                                if (openBtn) openBtn.addEventListener('click', () => shell.openExternal(verification_uri));
+                                if (openBtn) openBtn.addEventListener('click', () => {
+                                    window.launcher.auth.microsoft.openBrowser(sessionId);
+                                });
                                 if (copyBtn) {
-                                    copyBtn.addEventListener('click', () => {
-                                        clipboard.writeText(user_code);
-                                        copyFeedback.style.opacity = '1';
-                                        setTimeout(() => copyFeedback.style.opacity = '0', 2000);
+                                    copyBtn.addEventListener('click', async () => {
+                                        await window.launcher.auth.microsoft.copyCode(sessionId);
+                                        copyFeedback.classList.add('visible');
+                                        setTimeout(() => copyFeedback.classList.remove('visible'), 2000);
                                     });
                                 }
                             }, 100);
 
-                            const account_connect = await ipcRenderer.invoke('Microsoft-device-code-poll', {
-                                sessionId, device_code, interval, expires_in
-                            });
+                            const account = await window.launcher.auth.microsoft.poll(sessionId);
 
-                            if (account_connect.error) {
-                                if (account_connect.error === 'cancelled') {
+                            if (account.error) {
+                                if (account.error === 'cancelled') {
                                     popupAccount.closePopup();
                                     return;
                                 }
                                 popupAccount.openPopup({
                                     title: 'Erreur Microsoft',
-                                    content: `${account_connect.error}: ${account_connect.errorMessage || 'Erreur inconnue'}`,
+                                    content: escapeHTML(`${account.error}: ${account.errorMessage || 'Erreur inconnue'}`),
                                     color: 'red',
                                     options: true
                                 });
                                 return;
                             }
 
-                            let configClient = await this.db.readData('configClient');
-                            let account = await this.db.createData('accounts', account_connect);
-                            configClient.account_selected = account.ID;
-                            await this.db.updateData('configClient', configClient);
-
-                            const { addAccount } = await import('../utils.js');
                             await addAccount(account);
                             await accountSelect(account);
 
                             popupAccount.closePopup();
                         } catch (err) {
-                            console.error('[Settings] Microsoft auth error:', err);
+                            console.error(`[Settings] Microsoft auth error: ${err}`);
                             popupAccount.openPopup({
                                 title: 'Erreur',
-                                content: err.toString(),
+                                content: escapeHTML(err.toString()),
                                 options: true
                             });
                         }
                         return;
                     }
 
-                    let account = await this.db.readData('accounts', id);
-                    let configClient = await this.setInstance(account);
-                    await accountSelect(account);
-                    configClient.account_selected = account.ID;
-                    return await this.db.updateData('configClient', configClient);
+                    let account = await window.launcher.accounts.select(id);
+                    if (!account) return;
+                    await this.setInstance(account);
+                    return await accountSelect(account);
                 }
 
                 if (e.target.classList.contains("delete-profile")) {
@@ -175,22 +164,16 @@ class Settings {
                         content: 'Veuillez patienter...',
                         color: 'var(--color)'
                     })
-                    await this.db.deleteData('accounts', id);
+                    let result = await window.launcher.accounts.remove(id);
                     let deleteProfile = document.getElementById(`${id}`);
                     let accountListElement = document.querySelector('.accounts-list');
                     if (deleteProfile) deleteProfile.remove();
 
                     if (accountListElement.children.length == 1) return changePanel('login');
 
-                    let configClient = await this.db.readData('configClient');
-
-                    if (configClient.account_selected == id) {
-                        let allAccounts = await this.db.readAllData('accounts');
-                        configClient.account_selected = allAccounts[0].ID
-                        accountSelect(allAccounts[0]);
-                        let newInstanceSelect = await this.setInstance(allAccounts[0]);
-                        configClient.instance_selct = newInstanceSelect.instance_selct
-                        return await this.db.updateData('configClient', configClient);
+                    if (result?.wasSelected && result.selected) {
+                        accountSelect(result.selected);
+                        await this.setInstance(result.selected);
                     }
                 }
             } catch (err) {
@@ -202,7 +185,7 @@ class Settings {
     }
 
     async setInstance(auth) {
-        let configClient = await this.db.readData('configClient')
+        let configClient = await window.launcher.settings.get()
         let instanceSelect = configClient.instance_selct
         let instancesList = await config.getInstanceList()
 
@@ -212,19 +195,19 @@ class Settings {
                 if (whitelist !== auth.name) {
                     if (instance.name == instanceSelect) {
                         let newInstanceSelect = instancesList.find(i => i.whitelistActive == false)
-                        configClient.instance_selct = newInstanceSelect.name
-                        await setStatus(newInstanceSelect.status)
+                        await window.launcher.settings.set('instance_selct', newInstanceSelect.name)
+                        await setStatus(newInstanceSelect)
                     }
                 }
             }
         }
-        return configClient
     }
 
     async ram() {
-        let config = await this.db.readData('configClient');
-        let totalMem = Math.trunc(os.totalmem() / 1073741824 * 10) / 10;
-        let freeMem = Math.trunc(os.freemem() / 1073741824 * 10) / 10;
+        let config = await window.launcher.settings.get();
+        let memory = await window.launcher.system.memory();
+        let totalMem = Math.trunc(memory.total / 1073741824 * 10) / 10;
+        let freeMem = Math.trunc(memory.free / 1073741824 * 10) / 10;
 
         document.getElementById("total-ram").textContent = `${totalMem} Go`;
         document.getElementById("free-ram").textContent = `${freeMem} Go`;
@@ -242,8 +225,7 @@ class Settings {
         } : { ramMin: "1", ramMax: "2" };
 
         if (totalMem < ram.ramMin) {
-            config.java_config.java_memory = { min: 1, max: 2 };
-            this.db.updateData('configClient', config);
+            window.launcher.settings.set('java_memory', { min: 1, max: 2 });
             ram = { ramMin: "1", ramMax: "2" }
         };
 
@@ -258,53 +240,42 @@ class Settings {
         maxSpan.setAttribute("value", `${ram.ramMax} Go`);
 
         slider.on("change", async (min, max) => {
-            let config = await this.db.readData('configClient');
             minSpan.setAttribute("value", `${min} Go`);
             maxSpan.setAttribute("value", `${max} Go`);
-            config.java_config.java_memory = { min: min, max: max };
-            this.db.updateData('configClient', config);
+            window.launcher.settings.set('java_memory', { min: min, max: max });
         });
     }
 
     async javaPath() {
         let javaPathText = document.querySelector(".java-path-txt")
-        javaPathText.textContent = `${await appdata()}/${process.platform == 'darwin' ? this.config.dataDirectory : `.${this.config.dataDirectory}`}/runtime`;
+        javaPathText.textContent = await window.launcher.java.runtimePath();
 
-        let configClient = await this.db.readData('configClient')
-        let javaPath = configClient?.java_config?.java_path || 'Utiliser la version de java livre avec le launcher';
+        let configClient = await window.launcher.settings.get()
+        let javaPath = configClient?.java_config?.java_path || 'Utiliser la version de Java livrée avec le launcher';
         let javaPathInputTxt = document.querySelector(".java-path-input-text");
-        let javaPathInputFile = document.querySelector(".java-path-input-file");
         javaPathInputTxt.value = javaPath;
 
         document.querySelector(".java-path-set").addEventListener("click", async () => {
-            javaPathInputFile.value = '';
-            javaPathInputFile.click();
-            await new Promise((resolve) => {
-                let interval;
-                interval = setInterval(() => {
-                    if (javaPathInputFile.value != '') resolve(clearInterval(interval));
-                }, 100);
-            });
+            let result = await window.launcher.java.pick();
+            if (result?.cancelled) return;
 
-            if (javaPathInputFile.value.replace(".exe", '').endsWith("java") || javaPathInputFile.value.replace(".exe", '').endsWith("javaw")) {
-                let configClient = await this.db.readData('configClient')
-                let file = javaPathInputFile.files[0].path;
-                javaPathInputTxt.value = file;
-                configClient.java_config.java_path = file
-                await this.db.updateData('configClient', configClient);
-            } else alert("Le nom du fichier doit être java ou javaw");
+            if (result?.path) {
+                javaPathInputTxt.value = result.path;
+            } else new popup().openPopup({
+                title: 'Erreur',
+                content: 'Le nom du fichier doit être java ou javaw.',
+                options: true
+            });
         });
 
         document.querySelector(".java-path-reset").addEventListener("click", async () => {
-            let configClient = await this.db.readData('configClient')
-            javaPathInputTxt.value = 'Utiliser la version de java livre avec le launcher';
-            configClient.java_config.java_path = null
-            await this.db.updateData('configClient', configClient);
+            javaPathInputTxt.value = 'Utiliser la version de Java livrée avec le launcher';
+            await window.launcher.settings.set('java_path', null);
         });
     }
 
     async resolution() {
-        let configClient = await this.db.readData('configClient')
+        let configClient = await window.launcher.settings.get()
         let resolution = configClient?.game_config?.screen_size || { width: 1920, height: 1080 };
 
         let width = document.querySelector(".width-size");
@@ -315,28 +286,22 @@ class Settings {
         height.value = resolution.height;
 
         width.addEventListener("change", async () => {
-            let configClient = await this.db.readData('configClient')
-            configClient.game_config.screen_size.width = width.value;
-            await this.db.updateData('configClient', configClient);
+            await window.launcher.settings.set('screen_size', { width: width.value });
         })
 
         height.addEventListener("change", async () => {
-            let configClient = await this.db.readData('configClient')
-            configClient.game_config.screen_size.height = height.value;
-            await this.db.updateData('configClient', configClient);
+            await window.launcher.settings.set('screen_size', { height: height.value });
         })
 
         resolutionReset.addEventListener("click", async () => {
-            let configClient = await this.db.readData('configClient')
-            configClient.game_config.screen_size = { width: '854', height: '480' };
             width.value = '854';
             height.value = '480';
-            await this.db.updateData('configClient', configClient);
+            await window.launcher.settings.set('screen_size', { width: 854, height: 480 });
         })
     }
 
     async launcher() {
-        let configClient = await this.db.readData('configClient');
+        let configClient = await window.launcher.settings.get();
 
         let maxDownloadFiles = configClient?.launcher_config?.download_multi || 5;
         let maxDownloadFilesInput = document.querySelector(".max-files");
@@ -344,52 +309,53 @@ class Settings {
         maxDownloadFilesInput.value = maxDownloadFiles;
 
         maxDownloadFilesInput.addEventListener("change", async () => {
-            let configClient = await this.db.readData('configClient')
-            configClient.launcher_config.download_multi = maxDownloadFilesInput.value;
-            await this.db.updateData('configClient', configClient);
+            await window.launcher.settings.set('download_multi', maxDownloadFilesInput.value);
         })
 
         maxDownloadFilesReset.addEventListener("click", async () => {
-            let configClient = await this.db.readData('configClient')
             maxDownloadFilesInput.value = 5
-            configClient.launcher_config.download_multi = 5;
-            await this.db.updateData('configClient', configClient);
+            await window.launcher.settings.set('download_multi', 5);
         })
 
         let themeBox = document.querySelector(".theme-box");
-        let theme = configClient?.launcher_config?.theme || "auto";
+        let theme = configClient?.launcher_config?.theme || "dark";
 
-        if (theme == "auto") {
-            document.querySelector('.theme-btn-auto').classList.add('active-theme');
-        } else if (theme == "dark") {
-            document.querySelector('.theme-btn-sombre').classList.add('active-theme');
-        } else if (theme == "light") {
-            document.querySelector('.theme-btn-clair').classList.add('active-theme');
-        }
+        const themeButtons = [
+            ['theme-btn-clair', 'light'],
+            ['theme-btn-sombre', 'dark'],
+            ['theme-btn-auto', 'auto']
+        ];
 
-        themeBox.addEventListener("click", async e => {
-            if (e.target.classList.contains('theme-btn')) {
-                let activeTheme = document.querySelector('.active-theme');
-                if (e.target.classList.contains('active-theme')) return
-                activeTheme?.classList.remove('active-theme');
+        const markTheme = value => {
+            for (let [className, name] of themeButtons) {
+                let button = document.querySelector(`.${className}`);
+                button.classList.toggle('active-theme', name === value);
+                button.setAttribute('aria-checked', String(name === value));
+            }
+        };
 
-                if (e.target.classList.contains('theme-btn-auto')) {
-                    setBackground();
-                    theme = "auto";
-                    e.target.classList.add('active-theme');
-                } else if (e.target.classList.contains('theme-btn-sombre')) {
-                    setBackground(true);
-                    theme = "dark";
-                    e.target.classList.add('active-theme');
-                } else if (e.target.classList.contains('theme-btn-clair')) {
-                    setBackground(false);
-                    theme = "light";
-                    e.target.classList.add('active-theme');
-                }
+        markTheme(theme);
 
-                let configClient = await this.db.readData('configClient')
-                configClient.launcher_config.theme = theme;
-                await this.db.updateData('configClient', configClient);
+        const selectTheme = async target => {
+            let entry = themeButtons.find(([className]) => target.classList.contains(className));
+            if (!entry || entry[1] === theme) return;
+            theme = entry[1];
+            markTheme(theme);
+            await window.launcher.settings.set('theme', theme);
+            await applyTheme(theme);
+        };
+
+        themeBox.addEventListener("click", e => {
+            let target = e.target.closest('.theme-btn');
+            if (target) selectTheme(target);
+        })
+
+        themeBox.addEventListener("keydown", e => {
+            let target = e.target.closest('.theme-btn');
+            if (!target) return;
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                selectTheme(target);
             }
         })
 
@@ -410,20 +376,15 @@ class Settings {
                 if (e.target.classList.contains('active-close')) return
                 activeClose?.classList.toggle('active-close');
 
-                let configClient = await this.db.readData('configClient')
-
                 if (e.target.classList.contains('close-launcher')) {
                     e.target.classList.toggle('active-close');
-                    configClient.launcher_config.closeLauncher = "close-launcher";
-                    await this.db.updateData('configClient', configClient);
+                    await window.launcher.settings.set('closeLauncher', 'close-launcher');
                 } else if (e.target.classList.contains('close-all')) {
                     e.target.classList.toggle('active-close');
-                    configClient.launcher_config.closeLauncher = "close-all";
-                    await this.db.updateData('configClient', configClient);
+                    await window.launcher.settings.set('closeLauncher', 'close-all');
                 } else if (e.target.classList.contains('close-none')) {
                     e.target.classList.toggle('active-close');
-                    configClient.launcher_config.closeLauncher = "close-none";
-                    await this.db.updateData('configClient', configClient);
+                    await window.launcher.settings.set('closeLauncher', 'close-none');
                 }
             }
         })

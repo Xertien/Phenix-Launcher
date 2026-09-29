@@ -1,17 +1,18 @@
 <html>
     <head>
         <meta charset="UTF-8">
-        <meta http-equiv="Content-Security-Policy" content="script-src 'self';">
+        <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https: sentry-ipc:; media-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'">
         <link rel="stylesheet" href="assets/css/index.css">
     </head>
-    <body>
-        <div id="splash" style="display:none">
+    <body class="dark global">
+        <div id="splash">
             <img class="splash" src="assets/images/icon.png" />
             <p class="splash-message"></p>
             <p class="splash-author"><span class="author"></span></p>
             <p class="message">Recherche de mise à jour...</p>
             <progress value="0" max="0" class="progress"></progress>
         </div>
+        <script src="assets/js/utils/security.js"></script>
         <script src="assets/js/index.js" type="module"></script>
     </body>
 </html>

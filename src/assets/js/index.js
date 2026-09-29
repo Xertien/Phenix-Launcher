@@ -3,12 +3,7 @@
  * @license CC-BY-NC 4.0 - https://creativecommons.org/licenses/by-nc/4.0
  */
 
-const { ipcRenderer, shell } = require('electron');
-const pkg = require('../package.json');
-const os = require('os');
-import { config, database } from './utils.js';
-const nodeFetch = require("node-fetch");
-
+import { config, escapeHTML, sanitizeHTML } from './utils.js';
 
 class Splash {
     constructor() {
@@ -17,15 +12,20 @@ class Splash {
         this.splashAuthor = document.querySelector(".splash-author");
         this.message = document.querySelector(".message");
         this.progress = document.querySelector(".progress");
-        document.addEventListener('DOMContentLoaded', async () => {
-            let databaseLauncher = new database();
-            let configClient = await databaseLauncher.readData('configClient');
-            let theme = configClient?.launcher_config?.theme || "auto"
-            let isDarkTheme = await ipcRenderer.invoke('is-dark-theme', theme).then(res => res)
-            document.body.className = isDarkTheme ? 'dark global' : 'light global';
-            if (process.platform == 'win32') ipcRenderer.send('update-window-progress-load')
+        let start = async () => {
+            await this.applyTheme();
+            window.launcher.theme.onUpdated(() => this.applyTheme());
             this.startAnimation()
-        });
+        };
+        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
+        else start();
+    }
+
+    async applyTheme() {
+        let configClient = await window.launcher.settings.get().catch(() => null);
+        let theme = configClient?.launcher_config?.theme || "dark"
+        let isDarkTheme = await window.launcher.theme.isDark(theme).catch(() => true)
+        document.body.className = isDarkTheme ? 'dark global' : 'light global';
     }
 
     async startAnimation() {
@@ -34,7 +34,7 @@ class Splash {
             {"message": "Un launcher ma foi", "author": "Xertien"},
             {"message": "La terre est plate... J'rigole elle est triangulaire", "author": "Illuminati"},
             {"message": "Pensez-vous qu'un jour les poules auront des dents ?", "author": "Xertien"},
-            {"message": "Le saviez-vous, la Terre a un diamètre de 12 742 km", "author": "Wikipedia"},
+            {"message": "Le saviez-vous, la Terre a un diamètre de 12 742 km", "author": "Wikipedia"},
             {"message": "Les arcs-en-ciel, c'est de quelles couleurs ?", "author": "Ungolmonpercher"},
             {"message": "Hébergé par Phenix Hosting, setup par Xertien", "author": "NNTC"},
             {"message": "J'aurais bien vanné Kim mais trop peur d'avoir des problèmes", "author": "Unmecpasdrole"}
@@ -58,69 +58,48 @@ class Splash {
     async checkUpdate() {
         this.setStatus(`Recherche de mise à jour...`);
 
-        ipcRenderer.invoke('update-app').then().catch(err => {
-            return this.shutdown(`erreur lors de la recherche de mise à jour :<br>${err.message}`);
-        });
-
-        ipcRenderer.on('updateAvailable', () => {
+        window.launcher.updater.on('available', () => {
             this.setStatus(`Mise à jour disponible !`);
-            if (os.platform() == 'win32') {
+            if (window.launcher.platform == 'win32') {
                 this.toggleProgress();
-                ipcRenderer.send('start-update');
+                window.launcher.updater.start();
             }
             else return this.dowloadUpdate();
         })
 
-        ipcRenderer.on('error', (event, err) => {
-            if (err) return this.shutdown(`${err.message}`);
+        window.launcher.updater.on('error', err => {
+            if (err) return this.shutdown(escapeHTML(err.message));
         })
 
-        ipcRenderer.on('download-progress', (event, progress) => {
-            ipcRenderer.send('update-window-progress', { progress: progress.transferred, size: progress.total })
+        window.launcher.updater.on('progress', progress => {
             this.setProgress(progress.transferred, progress.total);
         })
 
-        ipcRenderer.on('update-not-available', () => {
+        window.launcher.updater.on('not-available', () => {
             console.error("Mise à jour non disponible");
             this.maintenanceCheck();
         })
-    }
 
-    getLatestReleaseForOS(os, preferredFormat, asset) {
-        return asset.filter(asset => {
-            const name = asset.name.toLowerCase();
-            const isOSMatch = name.includes(os);
-            const isFormatMatch = name.endsWith(preferredFormat);
-            return isOSMatch && isFormatMatch;
-        }).sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
+        window.launcher.updater.check().then(res => {
+            if (res?.error) return this.shutdown(`erreur lors de la recherche de mise à jour :<br>${escapeHTML(res.message)}`);
+        }).catch(err => {
+            return this.shutdown(`erreur lors de la recherche de mise à jour :<br>${escapeHTML(err?.message)}`);
+        });
     }
 
     async dowloadUpdate() {
-        const repoURL = pkg.repository.url.replace("git+", "").replace(".git", "").replace("https://github.com/", "").split("/");
-        const githubAPI = await nodeFetch('https://api.github.com').then(res => res.json()).catch(err => err);
-
-        const githubAPIRepoURL = githubAPI.repository_url.replace("{owner}", repoURL[0]).replace("{repo}", repoURL[1]);
-        const githubAPIRepo = await nodeFetch(githubAPIRepoURL).then(res => res.json()).catch(err => err);
-
-        const releases_url = await nodeFetch(githubAPIRepo.releases_url.replace("{/id}", '')).then(res => res.json()).catch(err => err);
-        const latestRelease = releases_url[0].assets;
-        let latest;
-
-        if (os.platform() == 'darwin') latest = this.getLatestReleaseForOS('mac', '.dmg', latestRelease);
-        else if (os == 'linux') latest = this.getLatestReleaseForOS('linux', '.appimage', latestRelease);
-
+        await window.launcher.updater.prepareManualDownload().catch(() => null);
 
         this.setStatus(`Mise à jour disponible !<br><div class="download-update">Télécharger</div>`);
         document.querySelector(".download-update").addEventListener("click", () => {
-            shell.openExternal(latest.browser_download_url);
+            window.launcher.updater.openManualDownload();
             return this.shutdown("Téléchargement en cours...");
         });
     }
 
-
     async maintenanceCheck() {
         config.GetConfig().then(res => {
-            if (res.maintenance) return this.shutdown(res.maintenance_message);
+            if (res.maintenance) return this.shutdown(sanitizeHTML(res.maintenance_message));
             this.startLauncher();
         }).catch(e => {
             console.error(e);
@@ -130,8 +109,7 @@ class Splash {
 
     startLauncher() {
         this.setStatus(`Démarrage du launcher`);
-        ipcRenderer.send('main-window-open');
-        ipcRenderer.send('update-window-close');
+        window.launcher.updater.launchMain();
     }
 
     shutdown(text) {
@@ -139,7 +117,7 @@ class Splash {
         let i = 4;
         setInterval(() => {
             this.setStatus(`${text}<br>Arrêt dans ${i--}s`);
-            if (i < 0) ipcRenderer.send('update-window-close');
+            if (i < 0) window.launcher.window.close();
         }, 1000);
     }
 
@@ -163,7 +141,7 @@ function sleep(ms) {
 
 document.addEventListener("keydown", (e) => {
     if (e.ctrlKey && e.shiftKey && e.keyCode == 73 || e.keyCode == 123) {
-        ipcRenderer.send("update-window-dev-tools");
+        window.launcher.window.devTools();
     }
 })
 new Splash();

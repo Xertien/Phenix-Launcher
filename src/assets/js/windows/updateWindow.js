@@ -27,12 +27,17 @@ function createWindow() {
         width: 400,
         height: 500,
         resizable: false,
-        icon: `./src/assets/images/icon.${os.platform() === "win32" ? "ico" : "png"}`,
+        icon: path.join(__dirname, '..', '..', 'images', `icon.${os.platform() === "win32" ? "ico" : "png"}`),
         frame: false,
         show: false,
         webPreferences: {
-            contextIsolation: false,
-            nodeIntegration: true
+            preload: path.join(__dirname, '..', '..', '..', 'preload', 'update.js'),
+            contextIsolation: true,
+            nodeIntegration: false,
+            sandbox: true,
+            webSecurity: true,
+            webviewTag: false,
+            spellcheck: false
         },
     });
     Menu.setApplicationMenu(null);
@@ -42,6 +47,7 @@ function createWindow() {
         if (updateWindow) {
             if (dev) updateWindow.webContents.openDevTools({ mode: 'detach' })
             updateWindow.show();
+            if (process.platform == 'win32') updateWindow.setProgressBar(2);
         }
     });
 }
