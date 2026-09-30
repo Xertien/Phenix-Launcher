@@ -41,6 +41,52 @@ export default class Slider {
         this.touchRight.addEventListener('mousedown', (event) => this.onStart(document.querySelector('.slider-touch-right'), event));
         this.touchLeft.addEventListener('touchstart', (event) => this.onStart(document.querySelector('.slider-touch-left'), event));
         this.touchRight.addEventListener('touchstart', (event) => this.onStart(document.querySelector('.slider-touch-right'), event));
+        this.touchLeft.addEventListener('keydown', (event) => this.onKey(this.touchLeft, event));
+        this.touchRight.addEventListener('keydown', (event) => this.onKey(this.touchRight, event));
+
+        this.updateAria();
+    }
+
+    onKey(elem, event) {
+        let step = this.step || 0.5;
+        let direction = { ArrowLeft: -1, ArrowDown: -1, ArrowRight: 1, ArrowUp: 1, PageDown: -2, PageUp: 2 }[event.key];
+        let isLeft = elem === this.touchLeft;
+        let current = parseFloat(isLeft ? this.minValue : this.maxValue);
+        let lower = isLeft ? this.min : parseFloat(this.minValue) + step;
+        let upper = isLeft ? parseFloat(this.maxValue) - step : this.max;
+        let value;
+
+        if (direction) value = current + direction * step;
+        else if (event.key === 'Home') value = lower;
+        else if (event.key === 'End') value = upper;
+        else return;
+
+        event.preventDefault();
+        value = Math.round(Math.min(Math.max(value, lower), upper) / step) * step;
+        if (value === current) return;
+
+        if (isLeft) {
+            this.minValue = value;
+            this.setMinValue(value);
+        } else {
+            this.maxValue = value;
+            this.setMaxValue(value);
+        }
+        this.updateAria();
+        this.emit('change', this.minValue, this.maxValue);
+    }
+
+    updateAria() {
+        let min = parseFloat(this.minValue);
+        let max = parseFloat(this.maxValue);
+        this.touchLeft.setAttribute('aria-valuemin', String(this.min));
+        this.touchLeft.setAttribute('aria-valuemax', String(max));
+        this.touchLeft.setAttribute('aria-valuenow', String(min));
+        this.touchLeft.setAttribute('aria-valuetext', `${min} Go`);
+        this.touchRight.setAttribute('aria-valuemin', String(min));
+        this.touchRight.setAttribute('aria-valuemax', String(this.max));
+        this.touchRight.setAttribute('aria-valuenow', String(max));
+        this.touchRight.setAttribute('aria-valuetext', `${max} Go`);
     }
 
     reset() {
@@ -139,6 +185,7 @@ export default class Slider {
             this.maxValue = this.step * multi;
         }
 
+        this.updateAria();
         this.emit('change', this.minValue, this.maxValue);
     }
 

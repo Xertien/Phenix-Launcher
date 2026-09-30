@@ -23,11 +23,15 @@ export default class popup {
 
         if (info.options) this.popupOptions.style.display = 'flex';
 
+        this.popupButton.textContent = info.buttonLabel || 'OK';
+        this.popupButton.classList.toggle('popup-button-secondary', !!info.buttonSecondary);
+
         if (this.popupOptions.style.display !== 'none') {
-            this.popupButton.addEventListener('click', () => {
+            this.popupButton.onclick = () => {
                 if (info.exit) return window.launcher.window.close();
+                if (typeof info.onButton === 'function') info.onButton();
                 this.closePopup();
-            })
+            };
         }
     }
 

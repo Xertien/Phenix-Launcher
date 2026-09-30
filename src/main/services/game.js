@@ -1,5 +1,6 @@
 const { app } = require('electron');
-const { Launch, Status } = require('minecraft-java-core');
+const { Launch } = require('minecraft-java-core');
+const { pingServer } = require('./serverPing.js');
 const accounts = require('./accounts.js');
 const settings = require('./settings.js');
 const remote = require('./remote.js');
@@ -10,6 +11,8 @@ class Game {
     constructor() {
         this.running = false;
         this.statusCache = { time: 0, list: null };
+        this.lastStatus = new Map();
+        this.statusPaused = false;
     }
 
     getGamePath(dataDirectory) {
@@ -31,17 +34,19 @@ class Game {
 
     async serverStatus(instanceName) {
         if (!isSafePathSegment(instanceName)) return { online: false };
+        if (this.statusPaused) return this.lastStatus.get(instanceName) ?? { online: false };
         let instance = (await this.instancesCached()).find(i => i.name == instanceName);
         let status = instance?.status;
         if (!status || typeof status.ip !== 'string' || !status.ip.length || status.ip.length > 253) return { online: false };
         let port = Number(status.port) || 25565;
-        let statusServer = await new Status(status.ip, port).getStatus().then(res => res).catch(err => ({ error: err }));
-        if (!statusServer || statusServer.error) return { online: false };
-        return {
+        let statusServer = await pingServer(status.ip, port).catch(err => ({ error: err }));
+        let result = !statusServer || statusServer.error ? { online: false } : {
             online: true,
             ms: Number(statusServer.ms) || 0,
             playersConnect: Number(statusServer.playersConnect) || 0
         };
+        this.lastStatus.set(instanceName, result);
+        return result;
     }
 
     async launch(window) {
@@ -120,6 +125,7 @@ class Game {
 
         let restore = () => {
             this.running = false;
+            this.statusPaused = false;
             if (window.isDestroyed()) return;
             if (closeLauncher == 'close-launcher' && hidden) window.show();
             window.setProgressBar(-1);
@@ -162,6 +168,7 @@ class Game {
             if (!window.isDestroyed()) {
                 if (closeLauncher == 'close-launcher' && !hidden) {
                     hidden = true;
+                    this.statusPaused = true;
                     window.hide();
                 }
                 window.setProgressBar(2);

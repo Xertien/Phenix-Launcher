@@ -41,9 +41,17 @@ async function setBackground(theme) {
     body.style.backgroundSize = 'cover';
 }
 
+let themeSwitchTimer = null;
+
 async function applyTheme(theme) {
     let isDark = await window.launcher.theme.isDark(theme).catch(() => true);
     if (isDark === currentDark) return;
+    let root = document.documentElement;
+    if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        root.classList.add('theme-switching');
+        clearTimeout(themeSwitchTimer);
+        themeSwitchTimer = setTimeout(() => root.classList.remove('theme-switching'), 450);
+    }
     await setBackground(isDark);
 }
 
@@ -68,15 +76,18 @@ async function addAccount(data) {
     let div = document.createElement("div");
     div.classList.add("account");
     div.id = data.ID;
+    div.tabIndex = 0;
+    div.setAttribute('role', 'button');
     div.innerHTML = `
         <div class="profile-image" ${skin ? 'style="background-image: url(' + skin + ');"' : ''}></div>
         <div class="profile-infos">
             <div class="profile-pseudo">${escapeHTML(data.name)}</div>
             <div class="profile-uuid">${escapeHTML(data.uuid)}</div>
         </div>
-        <div class="delete-profile" id="${escapeHTML(data.ID)}">
-            <div class="icon-account-delete delete-profile-icon"></div>
-        </div>
+        <span class="account-badge">Sélectionné</span>
+        <button type="button" class="delete-profile" id="${escapeHTML(data.ID)}" title="Supprimer le compte" aria-label="Supprimer le compte ${escapeHTML(data.name)}">
+            <svg xmlns="http://www.w3.org/2000/svg" height="20" viewBox="0 -960 960 960" width="20" fill="currentColor" aria-hidden="true"><path d="M280-120q-33 0-56.5-23.5T200-200v-520h-40v-80h200v-40h240v40h200v80h-40v520q0 33-23.5 56.5T680-120H280Zm400-600H280v520h400v-520ZM360-280h80v-360h-80v360Zm160 0h80v-360h-80v360ZM280-720v520-520Z"/></svg>
+        </button>
     `
     return document.querySelector('.accounts-list').appendChild(div);
 }
@@ -139,7 +150,7 @@ async function renderStatus(instance) {
     if (statusServer?.online) {
         statusServerElement.classList.remove('red')
         document.querySelector('.status-player-count').classList.remove('red')
-        statusServerElement.textContent = `En ligne - ${statusServer.ms} ms`
+        renderLatency(statusServerElement, statusServer.ms)
         playersOnline.textContent = statusServer.playersConnect
     } else {
         statusServerElement.classList.add('red')
@@ -147,6 +158,47 @@ async function renderStatus(instance) {
         document.querySelector('.status-player-count').classList.add('red')
         playersOnline.innerHTML = '0'
     }
+}
+
+const LATENCY_ANIMATION_MS = 400;
+const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+let latencyFrame = null;
+
+function renderLatency(element, ms) {
+    let value = element.querySelector('.ms-value');
+    if (!value) {
+        value = document.createElement('span');
+        value.classList.add('ms-value');
+        value.textContent = '0';
+        value.dataset.value = '0';
+        let label = document.createElement('span');
+        label.append('En ligne - ', value, ' ms');
+        element.replaceChildren(label);
+    }
+
+    let from = Number(value.dataset.value) || 0;
+    let to = Math.max(0, Math.round(Number(ms) || 0));
+    if (from === to) return;
+    value.dataset.value = String(to);
+
+    cancelAnimationFrame(latencyFrame);
+    value.classList.remove('ms-changed');
+    void value.offsetWidth;
+    value.classList.add('ms-changed');
+
+    if (reducedMotion.matches) {
+        value.textContent = String(to);
+        return;
+    }
+
+    let start = performance.now();
+    let step = now => {
+        let progress = Math.min(1, (now - start) / LATENCY_ANIMATION_MS);
+        let eased = 1 - Math.pow(1 - progress, 3);
+        value.textContent = String(Math.round(from + (to - from) * eased));
+        if (progress < 1) latencyFrame = requestAnimationFrame(step);
+    };
+    latencyFrame = requestAnimationFrame(step);
 }
 
 export {

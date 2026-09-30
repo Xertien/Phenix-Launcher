@@ -80,7 +80,10 @@ class Login {
                 title: 'Connexion Microsoft',
                 content: codeHtml,
                 color: 'var(--color)',
-                options: true
+                options: true,
+                buttonLabel: 'Annuler',
+                buttonSecondary: true,
+                onButton: () => window.launcher.auth.microsoft.cancel(sessionId)
             });
 
             setTimeout(() => {

@@ -18,36 +18,57 @@ class Settings {
     }
 
     navBTN() {
+        const activate = (button, tab) => {
+            let activeSettingsBTN = document.querySelector('.active-settings-BTN')
+            let activeContainerSettings = document.querySelector('.active-container-settings')
+            if (activeSettingsBTN) {
+                activeSettingsBTN.classList.remove('active-settings-BTN');
+                activeSettingsBTN.removeAttribute('aria-current');
+            }
+            button.classList.add('active-settings-BTN');
+            button.setAttribute('aria-current', 'page');
+            if (activeContainerSettings) activeContainerSettings.classList.remove('active-container-settings');
+            tab.classList.add('active-container-settings');
+            tab.scrollTop = 0;
+        };
+
         document.querySelector('.nav-box').addEventListener('click', e => {
-            if (e.target.classList.contains('nav-settings-btn')) {
-                let id = e.target.id
+            let button = e.target.closest('.nav-settings-btn');
+            if (!button) return;
+            let id = button.id
 
-                let activeSettingsBTN = document.querySelector('.active-settings-BTN')
-                let activeContainerSettings = document.querySelector('.active-container-settings')
+            if (id == 'save') {
+                this.resetAfterLeave(() => activate(document.querySelector('#account'), document.querySelector('#account-tab')));
+                return changePanel('home')
+            }
 
-                if (id == 'save') {
-                    if (activeSettingsBTN) activeSettingsBTN.classList.toggle('active-settings-BTN');
-                    document.querySelector('#account').classList.add('active-settings-BTN');
+            activate(button, document.querySelector(`#${id}-tab`));
 
-                    if (activeContainerSettings) activeContainerSettings.classList.toggle('active-container-settings');
-                    document.querySelector(`#account-tab`).classList.add('active-container-settings');
-                    return changePanel('home')
-                }
-
-                if (activeSettingsBTN) activeSettingsBTN.classList.toggle('active-settings-BTN');
-                e.target.classList.add('active-settings-BTN');
-
-                if (activeContainerSettings) activeContainerSettings.classList.toggle('active-container-settings');
-                document.querySelector(`#${id}-tab`).classList.add('active-container-settings');
-
-                if (id === 'java' && !this.sliderInitialized) {
-                    setTimeout(() => this.ram(), 50);
-                }
+            if (id === 'java' && !this.sliderInitialized) {
+                setTimeout(() => this.ram(), 50);
             }
         })
     }
 
+    resetAfterLeave(reset) {
+        let panel = document.querySelector('.panel.settings');
+        requestAnimationFrame(() => {
+            let running = panel.getAnimations().map(animation => animation.finished.catch(() => { }));
+            Promise.all(running).then(() => {
+                if (!panel.classList.contains('active')) reset();
+            });
+        });
+    }
+
     accounts() {
+        document.querySelector('.accounts-list').addEventListener('keydown', e => {
+            if (e.key !== 'Enter' && e.key !== ' ') return;
+            let target = e.target.closest('.account, .delete-profile');
+            if (!target || e.target !== target) return;
+            e.preventDefault();
+            target.click();
+        });
+
         document.querySelector('.accounts-list').addEventListener('click', async e => {
             let popupAccount = new popup()
             try {
@@ -101,7 +122,10 @@ class Settings {
                                 title: 'Connexion Microsoft',
                                 content: codeHtml,
                                 color: 'var(--color)',
-                                options: true
+                                options: true,
+                                buttonLabel: 'Annuler',
+                                buttonSecondary: true,
+                                onButton: () => window.launcher.auth.microsoft.cancel(sessionId)
                             });
 
                             setTimeout(() => {
@@ -326,21 +350,38 @@ class Settings {
             ['theme-btn-auto', 'auto']
         ];
 
-        const markTheme = value => {
+        let indicator = themeBox.querySelector('.segmented-indicator');
+
+        const moveIndicator = animate => {
+            let active = themeBox.querySelector('.active-theme');
+            if (!indicator || !active || !active.offsetWidth) return;
+            if (!animate) indicator.classList.add('no-transition');
+            indicator.style.width = `${active.offsetWidth}px`;
+            indicator.style.transform = `translateX(${active.offsetLeft - indicator.offsetLeft}px)`;
+            indicator.classList.add('ready');
+            if (!animate) {
+                void indicator.offsetWidth;
+                indicator.classList.remove('no-transition');
+            }
+        };
+
+        const markTheme = (value, animate) => {
             for (let [className, name] of themeButtons) {
                 let button = document.querySelector(`.${className}`);
                 button.classList.toggle('active-theme', name === value);
                 button.setAttribute('aria-checked', String(name === value));
             }
+            moveIndicator(animate);
         };
 
-        markTheme(theme);
+        markTheme(theme, false);
+        new ResizeObserver(() => moveIndicator(false)).observe(themeBox);
 
         const selectTheme = async target => {
             let entry = themeButtons.find(([className]) => target.classList.contains(className));
             if (!entry || entry[1] === theme) return;
             theme = entry[1];
-            markTheme(theme);
+            markTheme(theme, true);
             await window.launcher.settings.set('theme', theme);
             await applyTheme(theme);
         };
@@ -362,31 +403,34 @@ class Settings {
         let closeBox = document.querySelector(".close-box");
         let closeLauncher = configClient?.launcher_config?.closeLauncher || "close-launcher";
 
-        if (closeLauncher == "close-launcher") {
-            document.querySelector('.close-launcher').classList.add('active-close');
-        } else if (closeLauncher == "close-all") {
-            document.querySelector('.close-all').classList.add('active-close');
-        } else if (closeLauncher == "close-none") {
-            document.querySelector('.close-none').classList.add('active-close');
-        }
-
-        closeBox.addEventListener("click", async e => {
-            if (e.target.classList.contains('close-btn')) {
-                let activeClose = document.querySelector('.active-close');
-                if (e.target.classList.contains('active-close')) return
-                activeClose?.classList.toggle('active-close');
-
-                if (e.target.classList.contains('close-launcher')) {
-                    e.target.classList.toggle('active-close');
-                    await window.launcher.settings.set('closeLauncher', 'close-launcher');
-                } else if (e.target.classList.contains('close-all')) {
-                    e.target.classList.toggle('active-close');
-                    await window.launcher.settings.set('closeLauncher', 'close-all');
-                } else if (e.target.classList.contains('close-none')) {
-                    e.target.classList.toggle('active-close');
-                    await window.launcher.settings.set('closeLauncher', 'close-none');
-                }
+        const markClose = value => {
+            for (let button of closeBox.querySelectorAll('.close-btn')) {
+                let active = button.classList.contains(value);
+                button.classList.toggle('active-close', active);
+                button.setAttribute('aria-checked', String(active));
             }
+        };
+
+        markClose(closeLauncher);
+
+        const selectClose = async target => {
+            if (target.classList.contains('active-close')) return;
+            let value = ['close-launcher', 'close-all', 'close-none'].find(name => target.classList.contains(name));
+            if (!value) return;
+            markClose(value);
+            await window.launcher.settings.set('closeLauncher', value);
+        };
+
+        closeBox.addEventListener("click", e => {
+            let target = e.target.closest('.close-btn');
+            if (target) selectClose(target);
+        })
+
+        closeBox.addEventListener("keydown", e => {
+            let target = e.target.closest('.close-btn');
+            if (!target || (e.key !== 'Enter' && e.key !== ' ')) return;
+            e.preventDefault();
+            selectClose(target);
         })
     }
 }

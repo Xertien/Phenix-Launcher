@@ -333,7 +333,10 @@ class Home {
                         title: 'Connexion Microsoft',
                         content: codeHtml,
                         color: 'var(--color)',
-                        options: true
+                        options: true,
+                        buttonLabel: 'Annuler',
+                        buttonSecondary: true,
+                        onButton: () => window.launcher.auth.microsoft.cancel(sessionId)
                     });
 
                     setTimeout(() => {
@@ -890,11 +893,67 @@ class Home {
         let previous = this.pinnedInstances;
         let pinned = previous.includes(name) ? previous.filter(item => item !== name) : [...previous, name];
         this.pinnedInstances = pinned;
-        this.renderInstanceList(name);
+        this.animateInstanceList(name);
         let saved = await window.launcher.settings.set('pinned_instances', pinned).catch(() => false);
         if (!saved && this.pinnedInstances === pinned) {
             this.pinnedInstances = previous;
-            this.renderInstanceList(name);
+            this.animateInstanceList(name);
+        }
+    }
+
+    animateInstanceList(focusName) {
+        let list = document.querySelector('.instances-list');
+        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches || !list.offsetParent) return this.renderInstanceList(focusName);
+
+        let listRect = list.getBoundingClientRect();
+        let rows = new Map();
+        for (let row of list.querySelectorAll('.instance-elements')) rows.set(row.dataset.name, row.getBoundingClientRect().top);
+        let headers = new Map();
+        for (let header of list.querySelectorAll('.instances-group-title')) {
+            let rect = header.getBoundingClientRect();
+            headers.set(header.id, { top: rect.top, left: rect.left, width: rect.width, node: header.cloneNode(true) });
+        }
+
+        this.renderInstanceList(focusName);
+
+        const timing = { duration: 250, easing: 'cubic-bezier(0.4, 0, 0.2, 1)' };
+        for (let row of list.querySelectorAll('.instance-elements')) {
+            let before = rows.get(row.dataset.name);
+            if (before === undefined) {
+                row.animate([{ opacity: 0 }, { opacity: 1 }], timing);
+                continue;
+            }
+            let delta = before - row.getBoundingClientRect().top;
+            if (Math.abs(delta) < 1) continue;
+            let moving = row.dataset.name === focusName;
+            if (moving) row.classList.add('instance-moving');
+            let animation = row.animate([{ transform: `translateY(${delta}px)` }, { transform: 'translateY(0)' }], timing);
+            if (moving) animation.finished.catch(() => { }).then(() => row.classList.remove('instance-moving'));
+        }
+
+        let present = new Set();
+        for (let header of list.querySelectorAll('.instances-group-title')) {
+            present.add(header.id);
+            let before = headers.get(header.id);
+            if (!before) {
+                header.animate([{ opacity: 0 }, { opacity: 1 }], timing);
+                continue;
+            }
+            let delta = before.top - header.getBoundingClientRect().top;
+            if (Math.abs(delta) >= 1) header.animate([{ transform: `translateY(${delta}px)` }, { transform: 'translateY(0)' }], timing);
+        }
+
+        for (let [id, before] of headers) {
+            if (present.has(id)) continue;
+            let ghost = before.node;
+            ghost.removeAttribute('id');
+            ghost.setAttribute('aria-hidden', 'true');
+            ghost.classList.add('instances-group-ghost');
+            ghost.style.top = `${before.top - listRect.top + list.scrollTop}px`;
+            ghost.style.left = `${before.left - listRect.left}px`;
+            ghost.style.width = `${before.width}px`;
+            list.appendChild(ghost);
+            ghost.animate([{ opacity: 1 }, { opacity: 0 }], timing).finished.catch(() => { }).then(() => ghost.remove());
         }
     }
 
