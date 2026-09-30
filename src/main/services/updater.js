@@ -4,6 +4,7 @@ const nodeFetch = require('node-fetch');
 const pkg = require('../../../package.json');
 const UpdateWindow = require('../../assets/js/windows/updateWindow.js');
 const { isSafeExternalUrl, scrubString } = require('../../assets/js/utils/security.js');
+const { reportError } = require('../reporting.js');
 
 class Updater {
     constructor() {
@@ -36,6 +37,7 @@ class Updater {
         });
 
         autoUpdater.on('error', err => {
+            reportError('updater', 'auto_updater', err, { once: true, level: 'warning' });
             this.send('updater:error', { message: scrubString(String(err?.message || err)) });
         });
     }
@@ -45,12 +47,14 @@ class Updater {
             await autoUpdater.checkForUpdates();
             return { error: false };
         } catch (error) {
+            reportError('updater', 'check', error, { once: true, level: 'warning' });
             return { error: true, message: scrubString(String(error?.message || error)) };
         }
     }
 
     start() {
         autoUpdater.downloadUpdate().catch(err => {
+            reportError('updater', 'download', err, { once: true });
             this.send('updater:error', { message: scrubString(String(err?.message || err)) });
         });
         return true;
@@ -82,7 +86,7 @@ class Updater {
                 this.manualDownloadUrl = downloadUrl;
             }
         } catch (error) {
-            console.error(`[Updater] ${error?.message || error}`);
+            reportError('updater', 'manual_download', error, { once: true, level: 'warning' });
         }
         return { available: !!this.manualDownloadUrl };
     }

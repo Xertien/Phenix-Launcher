@@ -5,6 +5,7 @@ const settings = require('./settings.js');
 const remote = require('./remote.js');
 const MicrosoftDeviceAuth = require('./msDeviceAuth.js');
 const { isAccountId } = require('../validate.js');
+const { reportError, reportMessage } = require('../reporting.js');
 
 const ACCOUNTS_SCHEMA = 2;
 
@@ -26,13 +27,20 @@ class Accounts {
 
     async detectEncryption() {
         try {
-            if (!(await safeStorage.isAsyncEncryptionAvailable())) return false;
+            if (!(await safeStorage.isAsyncEncryptionAvailable())) {
+                reportMessage('accounts', 'encryption_unavailable', 'safeStorage encryption unavailable, sessions kept in memory', { once: true, tags: { reason: 'unavailable' } });
+                return false;
+            }
             if (process.platform === 'linux' && typeof safeStorage.getSelectedStorageBackend === 'function') {
                 let backend = safeStorage.getSelectedStorageBackend();
-                if (backend === 'basic_text' || backend === 'unknown') return false;
+                if (backend === 'basic_text' || backend === 'unknown') {
+                    reportMessage('accounts', 'encryption_unavailable', 'safeStorage backend not secure, sessions kept in memory', { once: true, level: 'info', tags: { reason: backend } });
+                    return false;
+                }
             }
             return true;
         } catch (e) {
+            reportError('accounts', 'encryption_detect', e, { once: true });
             return false;
         }
     }
@@ -51,11 +59,14 @@ class Accounts {
         return { account, shouldReEncrypt };
     }
 
-    async wipeStored() {
+    async wipeStored(reason) {
+        let count = 0;
         try {
+            count = (await database.readAllData('accounts')).length;
             await database.deleteAllData('accounts');
+            if (count) reportMessage('accounts', 'wipe', `Stored accounts wiped (${reason})`, { once: reason, level: 'info', tags: { reason }, extra: { count } });
         } catch (e) {
-            console.error(`[Accounts] Impossible de vider les comptes: ${e?.message || e}`);
+            reportError('accounts', 'wipe', e, { once: true, tags: { reason } });
         }
     }
 
@@ -66,8 +77,8 @@ class Accounts {
 
             let configClient = await settings.get();
             if (configClient.accounts_schema !== ACCOUNTS_SCHEMA) {
-                console.warn('[Accounts] Migration du stockage des comptes, déconnexion de tous les comptes');
-                await this.wipeStored();
+                console.info('[Accounts] Migration du stockage des comptes, déconnexion de tous les comptes');
+                await this.wipeStored('schema_migration');
                 await settings.update(config => {
                     config.account_selected = null;
                     config.accounts_schema = ACCOUNTS_SCHEMA;
@@ -75,7 +86,7 @@ class Accounts {
             }
 
             if (!this.persistent) {
-                console.warn('[Accounts] Chiffrement indisponible, les sessions resteront en mémoire');
+                console.info('[Accounts] Chiffrement indisponible, les sessions resteront en mémoire');
                 await settings.update(config => {
                     config.account_selected = null;
                 });
@@ -83,21 +94,37 @@ class Accounts {
             }
 
             let rows = await database.readAllData('accounts');
+            let invalid = 0;
+            let unreadable = 0;
+            let lastError = null;
             for (let row of rows) {
                 if (!row || row.schema !== ACCOUNTS_SCHEMA || typeof row.secret !== 'string') {
+                    invalid++;
                     await database.deleteData('accounts', row?.ID).catch(() => { });
                     continue;
                 }
+                let decrypted;
                 try {
-                    let { account, shouldReEncrypt } = await this.decrypt(row.secret);
-                    account.ID = row.ID;
-                    this.cache.set(String(row.ID), account);
-                    if (shouldReEncrypt) await database.updateData('accounts', { schema: ACCOUNTS_SCHEMA, secret: await this.encrypt(account) }, row.ID);
+                    decrypted = await this.decrypt(row.secret);
                 } catch (e) {
-                    console.warn(`[Accounts] Compte ${row.ID} illisible, suppression`);
+                    unreadable++;
+                    lastError = e;
                     await database.deleteData('accounts', row.ID).catch(() => { });
+                    continue;
+                }
+                let { account, shouldReEncrypt } = decrypted;
+                account.ID = row.ID;
+                this.cache.set(String(row.ID), account);
+                if (shouldReEncrypt) {
+                    try {
+                        await database.updateData('accounts', { schema: ACCOUNTS_SCHEMA, secret: await this.encrypt(account) }, row.ID);
+                    } catch (e) {
+                        reportError('accounts', 'reencrypt', e, { once: true });
+                    }
                 }
             }
+            if (unreadable) reportError('accounts', 'decrypt', lastError, { once: true, extra: { unreadable, total: rows.length } });
+            if (invalid) reportMessage('accounts', 'invalid_rows', 'Invalid stored accounts removed', { once: true, extra: { invalid, total: rows.length } });
         });
     }
 
@@ -176,7 +203,7 @@ class Accounts {
                 let row = await database.createData('accounts', { schema: ACCOUNTS_SCHEMA, secret: await this.encrypt(data) });
                 data.ID = row.ID;
             } catch (e) {
-                console.warn(`[Accounts] Chiffrement impossible, session gardée en mémoire: ${e?.message || e}`);
+                reportError('accounts', 'encrypt_store', e, { once: true, level: 'warning' });
             }
         }
         if (data.ID === undefined) {
@@ -194,7 +221,7 @@ class Accounts {
             try {
                 await database.updateData('accounts', { schema: ACCOUNTS_SCHEMA, secret: await this.encrypt(data) }, previous.ID);
             } catch (e) {
-                console.warn(`[Accounts] Mise à jour chiffrée impossible: ${e?.message || e}`);
+                reportError('accounts', 'encrypt_update', e, { once: true, level: 'warning' });
             }
         }
         this.cache.set(key, data);
@@ -239,6 +266,15 @@ class Accounts {
         });
     }
 
+    async refreshFailed(key, type, stage, message, error) {
+        let reason = typeof message === 'string' && message.length <= 64 && /^[\w.\-]+$/.test(message) ? message : 'other';
+        let options = { once: `${type}|${stage}|${reason}`, level: 'warning', tags: { account_type: type || 'unknown', stage, reason } };
+        if (error) reportError('accounts', 'refresh', error, options);
+        else reportMessage('accounts', 'refresh', `Account refresh failed (${type || 'unknown'}, ${stage})`, { ...options, fingerprint: [type || 'unknown', stage] });
+        await this.delete(key);
+        return { error: true, message: String(message) };
+    }
+
     refresh(id) {
         return this.run(async () => {
             let key = this.key(id);
@@ -251,38 +287,22 @@ class Accounts {
             try {
                 if (type === 'Xbox') {
                     refreshed = await new MicrosoftDeviceAuth(config.client_id).refresh(account);
-                    if (refreshed.error) {
-                        console.error(`[Account] ${account.name}: ${refreshed.errorMessage || refreshed.error}`);
-                        await this.delete(key);
-                        return { error: true, message: String(refreshed.errorMessage || refreshed.error) };
-                    }
+                    if (refreshed.error) return await this.refreshFailed(key, type, 'rejected', refreshed.errorMessage || refreshed.error);
                 } else if (type === 'AZauth') {
                     refreshed = await new AZauth(config.online).verify(account);
-                    if (refreshed.error) {
-                        console.error(`[Account] ${account.name}: ${refreshed.message}`);
-                        await this.delete(key);
-                        return { error: true, message: String(refreshed.message) };
-                    }
+                    if (refreshed.error) return await this.refreshFailed(key, type, 'rejected', refreshed.message);
                 } else if (type === 'Mojang') {
                     if (account.meta.online == false) {
                         refreshed = await Mojang.login(account.name);
                     } else {
                         refreshed = await Mojang.refresh(account);
-                        if (refreshed.error) {
-                            console.error(`[Account] ${account.name}: ${refreshed.errorMessage}`);
-                            await this.delete(key);
-                            return { error: true, message: String(refreshed.errorMessage) };
-                        }
+                        if (refreshed.error) return await this.refreshFailed(key, type, 'rejected', refreshed.errorMessage);
                     }
                 } else {
-                    console.error(`[Account] ${account.name}: Account Type Not Found`);
-                    await this.delete(key);
-                    return { error: true, message: 'Account Type Not Found' };
+                    return await this.refreshFailed(key, type, 'unknown_type', 'Account Type Not Found');
                 }
             } catch (error) {
-                console.error(`[Account] ${account.name}: ${error?.message || error}`);
-                await this.delete(key);
-                return { error: true, message: String(error?.message || error) };
+                return await this.refreshFailed(key, type, 'exception', error?.message || error, error);
             }
 
             let stored = await this.replace(key, refreshed);

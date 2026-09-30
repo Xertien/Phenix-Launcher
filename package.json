@@ -1,7 +1,7 @@
 {
     "name": "Phenix-Launcher",
     "preductname": "Phénix Launcher",
-    "version": "3.0.13",
+    "version": "3.0.14",
     "description": "Phénix moddé v3 launcher",
     "main": "src/app.js",
     "author": {
@@ -29,7 +29,6 @@
         "@sentry/electron": "^7.20.0",
         "electron-updater": "^6.8.9",
         "minecraft-java-core": "^3.11.4",
-        "node-bdd": "^2.0.4",
         "node-fetch": "^2.7.0",
         "xml-js": "^1.6.11"
     },
@@ -42,6 +41,9 @@
         "jimp": "^0.22.12",
         "nodemon": "^3.1.14",
         "png2icons": "^2.0.1"
+    },
+    "overrides": {
+        "adm-zip": "0.6.1"
     },
     "repository": {
         "type": "git",

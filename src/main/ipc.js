@@ -1,6 +1,7 @@
 const { ipcMain } = require('electron');
 const path = require('path');
 const { fileURLToPath } = require('url');
+const { reportError } = require('./reporting.js');
 
 const PAGES = {
     launcher: path.join(__dirname, '..', 'launcher.html'),
@@ -39,7 +40,12 @@ function handle(channel, pages, listener) {
             console.warn(`[IPC] Requête refusée sur ${channel}`);
             throw new Error('Unauthorized');
         }
-        return await listener(event, ...args);
+        try {
+            return await listener(event, ...args);
+        } catch (error) {
+            reportError('ipc', channel, error, { once: `${error?.name || ''}|${error?.code || ''}|${String(error?.message || error).slice(0, 120)}`, tags: { ipc_channel: channel } });
+            throw error;
+        }
     });
 }
 

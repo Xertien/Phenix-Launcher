@@ -3,6 +3,7 @@ const path = require('path');
 const settings = require('./settings.js');
 const remote = require('./remote.js');
 const { isSafePathSegment } = require('../../assets/js/utils/security.js');
+const { reportError } = require('../reporting.js');
 
 const STATES = {
     installed: 'installed',
@@ -109,6 +110,7 @@ class Instances {
             return { deleted: true };
         } catch (error) {
             let code = error?.code === 'EBUSY' || error?.code === 'EPERM' ? 'locked' : 'failed';
+            reportError('instances', 'delete', error, { once: `${code}|${error?.code || ''}`, level: code === 'locked' ? 'warning' : 'error', tags: { result: code } });
             return {
                 error: code,
                 message: code === 'locked'

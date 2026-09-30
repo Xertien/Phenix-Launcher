@@ -2,6 +2,7 @@ const pkg = require('../../../package.json');
 const nodeFetch = require('node-fetch');
 const convert = require('xml-js');
 const { isSafePathSegment, isSafeExternalUrl } = require('../../assets/js/utils/security.js');
+const { reportError, reportMessage } = require('../reporting.js');
 
 let url = pkg.user ? `${pkg.url}/${pkg.user}` : pkg.url;
 
@@ -9,12 +10,27 @@ let configUrl = `${url}/launcher/config-launcher/config.json`;
 let newsUrl = `${url}/launcher/news-launcher/news.json`;
 let instancesUrl = `${url}/files/`;
 
+const OFFLINE_CODES = ['ENOTFOUND', 'EAI_AGAIN', 'ECONNREFUSED', 'ECONNRESET', 'ETIMEDOUT', 'ENETUNREACH', 'EHOSTUNREACH', 'network'];
+
+function reportFetch(operation, error) {
+    let code = error?.error?.code || error?.code || 'unknown';
+    let offline = OFFLINE_CODES.includes(code);
+    reportError('remote', operation, error, { once: true, level: offline ? 'info' : 'warning', tags: { code, offline } });
+}
+
 class Remote {
     constructor() {
         this.lastConfig = null;
     }
 
     getConfig() {
+        return this.fetchConfig().catch(error => {
+            reportFetch('config', error);
+            throw error;
+        });
+    }
+
+    fetchConfig() {
         return new Promise((resolve, reject) => {
             nodeFetch(configUrl).then(async res => {
                 if (res.status === 200) {
@@ -35,13 +51,16 @@ class Remote {
     }
 
     async getInstanceList() {
-        let instances = await nodeFetch(instancesUrl).then(res => res.json()).catch(err => ({}));
+        let instances = await nodeFetch(instancesUrl).then(res => res.json()).catch(error => {
+            reportFetch('instances', error);
+            return {};
+        });
         let instancesList = [];
         if (!instances || typeof instances !== 'object') return instancesList;
 
         for (let [name, data] of Object.entries(instances)) {
             if (!isSafePathSegment(name) || !data || typeof data !== 'object') {
-                console.warn(`[Config] Instance ignorée (nom invalide) : ${name}`);
+                reportMessage('remote', 'invalid_instance', `Instance ignorée (nom invalide) : ${String(name).slice(0, 80)}`, { once: String(name).slice(0, 80) });
                 continue;
             }
             let instance = data;
@@ -52,7 +71,16 @@ class Remote {
     }
 
     async getNews() {
-        let config = await this.getConfig() || {};
+        try {
+            return await this.fetchNews();
+        } catch (error) {
+            reportFetch('news', error);
+            throw error;
+        }
+    }
+
+    async fetchNews() {
+        let config = await this.fetchConfig() || {};
 
         if (config.rss) {
             if (!isSafeExternalUrl(config.rss)) throw { error: { code: 'invalid_rss', message: 'invalid rss url' } };

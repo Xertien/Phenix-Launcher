@@ -6,6 +6,7 @@ const settings = require('./settings.js');
 const remote = require('./remote.js');
 const instanceStore = require('./instances.js');
 const { isSafePathSegment, scrubString } = require('../../assets/js/utils/security.js');
+const { reportError } = require('../reporting.js');
 
 class Game {
     constructor() {
@@ -135,6 +136,14 @@ class Game {
         window.setProgressBar(2);
         await settings.setInstancePending(options.name, true).catch(() => { });
         let ready = false;
+        let launchTags = {
+            loader: String(options.loadder.loadder_type || 'none').slice(0, 32),
+            minecraft_version: String(options.loadder.minecraft_version || 'unknown').slice(0, 32)
+        };
+        let reportLaunch = (operation, error) => {
+            let message = typeof error?.error === 'string' ? error.error : (error?.message || String(error?.error ?? error));
+            reportError('game', operation, error instanceof Error ? error : new Error(scrubString(String(message))), { once: scrubString(String(message)).slice(0, 160), tags: launchTags });
+        };
 
         launch.on('extract', extract => {
             if (!window.isDestroyed()) window.setProgressBar(2);
@@ -184,7 +193,7 @@ class Game {
         launch.on('error', err => {
             restore();
             let message = typeof err?.error === 'string' ? err.error : (err?.message || String(err?.error ?? err));
-            console.error(`[Game] ${scrubString(String(message))}`);
+            reportLaunch('launch_error', err);
             send('game:error', scrubString(String(message)));
         });
 
@@ -192,6 +201,7 @@ class Game {
             await launch.Launch(opt);
         } catch (error) {
             restore();
+            reportLaunch('launch_exception', error);
             let message = scrubString(String(error?.message || error));
             send('game:error', message);
         }

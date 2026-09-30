@@ -69,7 +69,9 @@
             .replace(/(Bearer\s+)[\w\-.~+/=]+/gi, '$1[Filtered]')
             .replace(/(XBL3\.0 x=)[^\s"']+/g, '$1[Filtered]')
             .replace(/eyJ[\w-]+\.[\w-]+\.[\w-]*/g, '[Filtered JWT]')
-            .replace(/M\.[A-Z0-9_]+\.[\w!*\-$.]{40,}/g, '[Filtered]');
+            .replace(/M\.[A-Z0-9_]+\.[\w!*\-$.]{40,}/g, '[Filtered]')
+            .replace(/([A-Za-z]:[\\/]+(?:Users|Documents and Settings)[\\/]+)[^\\/"'<>:|?*\r\n]+?(?=[\\/"'<>:|?*\r\n]|$)/gi, '$1[user]')
+            .replace(/((?:^|[\s"'(=:])\/(?:home|Users)\/)[^/\s"']+/g, '$1[user]');
     }
 
     function redactSecrets(value, depth = 0) {
@@ -98,6 +100,7 @@
             if (event.extra) event.extra = redactSecrets(event.extra);
             if (event.contexts) event.contexts = redactSecrets(event.contexts);
             if (event.user) delete event.user.ip_address;
+            if (event.server_name) delete event.server_name;
         } catch (e) { }
         return event;
     }

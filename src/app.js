@@ -27,6 +27,7 @@ const UpdateWindow = require("./assets/js/windows/updateWindow.js");
 const MainWindow = require("./assets/js/windows/mainWindow.js");
 const services = require('./main/index.js');
 const database = require('./main/services/database.js');
+const { reportError } = require('./main/reporting.js');
 
 let dev = process.env.NODE_ENV === 'dev';
 
@@ -65,7 +66,7 @@ else app.whenReady().then(async () => {
     try {
         await services.init();
     } catch (error) {
-        console.error(`[Launcher] Initialisation impossible: ${error?.message || error}`);
+        reportError('startup', 'services_init', error);
     }
     services.register();
     if (dev) return MainWindow.createWindow()
@@ -73,3 +74,5 @@ else app.whenReady().then(async () => {
 });
 
 app.on('window-all-closed', () => app.quit());
+
+app.on('will-quit', () => database.close());
