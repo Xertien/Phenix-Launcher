@@ -46,6 +46,10 @@ if (isset($instance['PokeMoonX'])) $instance['PokeMoonX'] = array_merge($instanc
         "nameServer" => "PokeMoonX",
         "ip" => "178.32.106.234",
         "port" => 25599
+    ),
+    "ram" => array(
+        "min" => 4,
+        "max" => 6
     )
 ));
 ?>
