@@ -50,6 +50,29 @@ class Game {
         return result;
     }
 
+    async ramPlan(configClient, instance) {
+        let recommended = instance?.ram;
+        if (!recommended || settings.instanceMemory(configClient, instance.name)) return null;
+        if (!(await instanceStore.isFresh(instance.name))) return null;
+        let { usableGB, totalGB } = settings.limits();
+        if (recommended.max <= usableGB) return { apply: { min: recommended.min, max: recommended.max } };
+        let max = usableGB;
+        let min = Math.max(0.5, Math.min(recommended.min, max - 0.5));
+        return { ask: { recommended: { min: recommended.min, max: recommended.max }, capped: { min, max }, usableGB, totalGB } };
+    }
+
+    async applyRamPlan(name, plan, send) {
+        if (!plan) return;
+        if (plan.apply) {
+            let applied = await settings.setInstanceMemoryIfMissing(name, plan.apply);
+            if (applied) send('game:ram-applied', { instance: name, min: plan.apply.min, max: plan.apply.max });
+            return;
+        }
+        let configClient = await settings.get();
+        if (settings.instanceMemory(configClient, name)) return;
+        send('game:ram-recommendation', { instance: name, ...plan.ask });
+    }
+
     async launch(window) {
         if (this.running) return { error: 'already_running', message: 'Le jeu est déjà en cours de lancement.' };
         if (instanceStore.deleting) return { error: 'busy', message: 'Une instance est en cours de suppression, veuillez patienter.' };
@@ -74,8 +97,10 @@ class Game {
 
         let closeLauncher = configClient.launcher_config?.closeLauncher;
         let javaPath = configClient.java_config?.java_path || null;
-        let memory = configClient.java_config?.java_memory || { min: 2, max: 4 };
         let screen = configClient.game_config?.screen_size || { width: 854, height: 480 };
+        let extra = settings.launchOptions(configClient);
+        let ramPlan = await this.ramPlan(configClient, options);
+        let memory = settings.instanceMemory(configClient, options.name) || ramPlan?.apply || settings.globalMemory(configClient);
 
         let opt = {
             url: typeof options.url === 'string' ? options.url.replace(/^http:\/\//i, 'https://').replace(/\/files\?/, '/files/?') : options.url,
@@ -85,7 +110,7 @@ class Game {
             instance: options.name,
             version: options.loadder.minecraft_version,
             detached: closeLauncher == 'close-all' ? false : true,
-            downloadFileMultiple: Number(configClient.launcher_config?.download_multi) || 5,
+            downloadFileMultiple: Math.min(30, Math.max(1, Number(configClient.launcher_config?.download_multi) || 5)),
             intelEnabledMac: configClient.launcher_config?.intelEnabledMac,
 
             loader: {
@@ -108,12 +133,17 @@ class Game {
 
             screen: {
                 width: Number(screen.width) || 854,
-                height: Number(screen.height) || 480
+                height: Number(screen.height) || 480,
+                fullscreen: extra.fullscreen
             },
 
+            JVM_ARGS: [...extra.jvmArgs],
+
+            GAME_ARGS: [...(extra.fullscreen ? ['--fullscreen'] : []), ...extra.gameArgs],
+
             memory: {
-                min: `${Number(memory.min) * 1024}M`,
-                max: `${Number(memory.max) * 1024}M`
+                min: `${Math.round(Number(memory.min) * 1024)}M`,
+                max: `${Math.round(Number(memory.max) * 1024)}M`
             }
         };
 
@@ -173,6 +203,7 @@ class Game {
             if (!ready) {
                 ready = true;
                 settings.setInstancePending(options.name, false).catch(() => { });
+                this.applyRamPlan(options.name, ramPlan, send).catch(error => reportError('game', 'ram_plan', error, { once: true, level: 'warning' }));
             }
             if (!window.isDestroyed()) {
                 if (closeLauncher == 'close-launcher' && !hidden) {

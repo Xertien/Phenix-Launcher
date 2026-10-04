@@ -18,7 +18,8 @@ const updater = require('./services/updater.js');
 const LAUNCHER = ['launcher'];
 const UPDATE = ['update'];
 const BOTH = ['launcher', 'update'];
-const SETTINGS_KEYS = ['java_memory', 'screen_size', 'download_multi', 'theme', 'closeLauncher', 'instance_selct', 'pinned_instances', 'java_path'];
+const SETTINGS_KEYS = ['java_memory', 'instance_memory', 'screen_size', 'fullscreen', 'jvm_args', 'game_args', 'download_multi', 'theme', 'closeLauncher', 'instance_selct', 'pinned_instances', 'java_path'];
+const FOLDERS = ['game', 'instance', 'logs'];
 
 let reportWindow = { start: 0, count: 0 };
 
@@ -80,14 +81,16 @@ function register() {
     handle('settings:get', BOTH, () => settings.getPublic());
     handle('settings:set', LAUNCHER, async (event, key, value) => {
         if (!isOneOf(key, SETTINGS_KEYS)) return false;
-        if (key === 'pinned_instances') {
+        if (key === 'pinned_instances' || key === 'instance_memory') {
             let knownInstances = await knownInstanceNames();
             if (!knownInstances.length) return false;
             return settings.set(key, value, { knownInstances });
         }
         return settings.set(key, value);
     });
+    handle('settings:reset', LAUNCHER, () => settings.reset());
     handle('system:memory', LAUNCHER, () => system.memory());
+    handle('folders:open', LAUNCHER, (event, kind) => isOneOf(kind, FOLDERS) ? instances.openFolder(kind) : { error: 'invalid_folder', message: 'Dossier inconnu.' });
     handle('java:pick', LAUNCHER, event => system.pickJava(senderWindow(event)));
     handle('java:runtime-path', LAUNCHER, () => game.runtimePath());
 

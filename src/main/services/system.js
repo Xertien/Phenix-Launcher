@@ -41,9 +41,12 @@ class System {
     }
 
     memory() {
+        let limits = settings.limits();
         return {
             total: os.totalmem(),
-            free: os.freemem()
+            free: os.freemem(),
+            totalGB: limits.totalGB,
+            usableGB: limits.usableGB
         };
     }
 

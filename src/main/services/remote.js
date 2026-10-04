@@ -12,6 +12,18 @@ let instancesUrl = `${url}/files/`;
 
 const OFFLINE_CODES = ['ENOTFOUND', 'EAI_AGAIN', 'ECONNREFUSED', 'ECONNRESET', 'ETIMEDOUT', 'ENETUNREACH', 'EHOSTUNREACH', 'network'];
 
+function isRamValue(value) {
+    return typeof value === 'number' && Number.isFinite(value) && value >= 0.5 && value <= 64;
+}
+
+function sanitizeRam(value) {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+    if (!isRamValue(value.min) || !isRamValue(value.max) || value.min > value.max) return null;
+    let min = Math.max(0.5, Math.round(value.min * 2) / 2);
+    let max = Math.max(min, Math.round(value.max * 2) / 2);
+    return { min, max };
+}
+
 function reportFetch(operation, error) {
     let code = error?.error?.code || error?.code || 'unknown';
     let offline = OFFLINE_CODES.includes(code);
@@ -65,6 +77,12 @@ class Remote {
             }
             let instance = data;
             instance.name = name;
+            let ram = sanitizeRam(data.ram);
+            if (data.ram !== undefined && !ram) {
+                reportMessage('remote', 'invalid_ram', `Recommandation RAM ignorée : ${name.slice(0, 80)}`, { once: name.slice(0, 80), level: 'warning' });
+            }
+            if (ram) instance.ram = ram;
+            else delete instance.ram;
             instancesList.push(instance);
         }
         return instancesList;

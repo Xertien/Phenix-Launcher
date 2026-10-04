@@ -193,7 +193,7 @@ function renderLatency(element, ms) {
 
     let start = performance.now();
     let step = now => {
-        let progress = Math.min(1, (now - start) / LATENCY_ANIMATION_MS);
+        let progress = Math.min(1, Math.max(0, (now - start) / LATENCY_ANIMATION_MS));
         let eased = 1 - Math.pow(1 - progress, 3);
         value.textContent = String(Math.round(from + (to - from) * eased));
         if (progress < 1) latencyFrame = requestAnimationFrame(step);

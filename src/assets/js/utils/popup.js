@@ -3,27 +3,57 @@
  * @license CC-BY-NC 4.0 - https://creativecommons.org/licenses/by-nc/4.0
  */
 
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+const CLOSE_DURATION = 300;
+let closing = null;
+
+function settleClosing(hide) {
+    if (!closing) return;
+    let { timer, element, callbacks } = closing;
+    closing = null;
+    clearTimeout(timer);
+    if (hide) element.style.display = 'none';
+    for (let callback of callbacks) callback();
+}
+
 export default class popup {
     constructor() {
         this.popup = document.querySelector('.popup');
         this.popupTitle = document.querySelector('.popup-title');
         this.popupContent = document.querySelector('.popup-content');
         this.popupOptions = document.querySelector('.popup-options');
-        this.popupButton = document.querySelector('.popup-button');
+        this.popupButton = this.popupOptions.querySelector('.popup-button');
+    }
+
+    show() {
+        let opening = !this.popup.classList.contains('popup-open') && !closing;
+        settleClosing(false);
+        this.popup.style.display = 'flex';
+        if (opening) void this.popup.offsetWidth;
+        this.popup.classList.add('popup-open');
+    }
+
+    reset() {
+        this.popupTitle.textContent = '';
+        this.popupContent.replaceChildren();
+        this.popupOptions.style.display = 'none';
+        this.popupButton.disabled = false;
     }
 
     openPopup(info) {
-        this.popup.style.display = 'flex';
+        this.show();
         this.popup.classList.toggle('popup-no-overlay', info.background == false);
         this.popupTitle.textContent = info.title ?? '';
         const isError = !info.color || info.color == 'red';
         this.popupContent.classList.toggle('popup-content-error', isError);
         this.popupContent.style.color = isError ? '' : info.color;
-        this.popupContent.innerHTML = info.content;
+        if (info.content instanceof Node) this.popupContent.replaceChildren(info.content);
+        else this.popupContent.innerHTML = info.content ?? '';
 
         if (info.options) this.popupOptions.style.display = 'flex';
 
         this.popupButton.textContent = info.buttonLabel || 'OK';
+        this.popupButton.disabled = false;
         this.popupButton.classList.toggle('popup-button-secondary', !!info.buttonSecondary);
 
         if (this.popupOptions.style.display !== 'none') {
@@ -49,7 +79,7 @@ export default class popup {
             confirmButton.textContent = info.confirmLabel || 'Confirmer';
 
             let previousFocus = document.activeElement;
-            this.popup.style.display = 'flex';
+            this.show();
             this.popup.classList.remove('popup-no-overlay');
             this.popupTitle.textContent = info.title ?? '';
             this.popupContent.classList.remove('popup-content-error');
@@ -68,11 +98,14 @@ export default class popup {
 
             const finish = value => {
                 document.removeEventListener('keydown', onKey, true);
-                cancelButton.remove();
-                confirmButton.remove();
-                this.popupButton.hidden = false;
-                this.popupOptions.classList.remove('popup-options-confirm');
-                this.closePopup();
+                cancelButton.disabled = true;
+                confirmButton.disabled = true;
+                this.closePopup(() => {
+                    cancelButton.remove();
+                    confirmButton.remove();
+                    this.popupButton.hidden = false;
+                    this.popupOptions.classList.remove('popup-options-confirm');
+                });
                 if (previousFocus && previousFocus.isConnected) previousFocus.focus({ preventScroll: true });
                 resolve(value);
             };
@@ -96,10 +129,17 @@ export default class popup {
         });
     }
 
-    closePopup() {
-        this.popup.style.display = 'none';
-        this.popupTitle.textContent = '';
-        this.popupContent.innerHTML = '';
-        this.popupOptions.style.display = 'none';
+    closePopup(onClosed) {
+        if (closing) {
+            if (typeof onClosed === 'function') closing.callbacks.push(onClosed);
+            return;
+        }
+        let callbacks = [() => this.reset()];
+        if (typeof onClosed === 'function') callbacks.push(onClosed);
+        let animate = this.popup.classList.contains('popup-open') && !reduceMotion.matches;
+        this.popup.classList.remove('popup-open');
+        closing = { element: this.popup, callbacks, timer: null };
+        if (!animate) return settleClosing(true);
+        closing.timer = setTimeout(() => settleClosing(true), CLOSE_DURATION);
     }
 }

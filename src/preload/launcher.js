@@ -1,6 +1,6 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
-const GAME_EVENTS = ['extract', 'progress', 'check', 'estimated', 'speed', 'patch', 'data', 'close', 'error'];
+const GAME_EVENTS = ['extract', 'progress', 'check', 'estimated', 'speed', 'patch', 'data', 'close', 'error', 'ram-applied', 'ram-recommendation'];
 
 function invoke(channel, ...args) {
     return ipcRenderer.invoke(channel, ...args);
@@ -51,7 +51,11 @@ contextBridge.exposeInMainWorld('launcher', {
     },
     settings: {
         get: () => invoke('settings:get'),
-        set: (key, value) => invoke('settings:set', key, value)
+        set: (key, value) => invoke('settings:set', key, value),
+        reset: () => invoke('settings:reset')
+    },
+    folders: {
+        open: kind => invoke('folders:open', kind)
     },
     system: {
         memory: () => invoke('system:memory')

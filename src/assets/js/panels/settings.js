@@ -4,6 +4,7 @@
  */
 
 import { changePanel, accountSelect, addAccount, Slider, config, setStatus, popup, applyTheme, escapeHTML } from '../utils.js'
+import microsoftLogin from '../utils/microsoftLogin.js';
 
 class Settings {
     static id = "settings";
@@ -14,7 +15,10 @@ class Settings {
         this.ram()
         this.javaPath()
         this.resolution()
+        this.launchArgs()
         this.launcher()
+        this.folders()
+        this.resetSettings()
     }
 
     navBTN() {
@@ -44,9 +48,7 @@ class Settings {
 
             activate(button, document.querySelector(`#${id}-tab`));
 
-            if (id === 'java' && !this.sliderInitialized) {
-                setTimeout(() => this.ram(), 50);
-            }
+            if (id === 'java') this.ram();
         })
     }
 
@@ -81,90 +83,12 @@ class Settings {
                     })
 
                     if (id == 'add') {
-                        popupAccount.openPopup({
-                            title: 'Connexion Microsoft',
-                            content: '<div class="loader"></div><p class="popup-loader-text">Obtention du code...</p>',
-                            color: 'var(--color)'
-                        });
-
                         try {
-                            const deviceCodeResult = await window.launcher.auth.microsoft.start();
-
-                            if (deviceCodeResult.error) {
-                                popupAccount.openPopup({
-                                    title: 'Erreur',
-                                    content: escapeHTML(`${deviceCodeResult.error}: ${deviceCodeResult.errorMessage || 'Erreur inconnue'}`),
-                                    color: 'red',
-                                    options: true
-                                });
-                                return;
-                            }
-
-                            const { sessionId, user_code } = deviceCodeResult;
-
-                            const codeHtml = `
-                                <div class="device-code">
-                                    <p class="device-code-intro">Ouvrez votre navigateur et entrez ce code :</p>
-                                    <div class="device-code-box">
-                                        <span class="device-code-value">${escapeHTML(user_code)}</span>
-                                        <button id="copy-code-btn-settings" class="device-code-copy" title="Copier le code">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-                                        </button>
-                                    </div>
-                                    <p id="copy-feedback-settings" class="device-code-feedback">Code copié !</p>
-                                    <button id="open-browser-btn-settings" class="popup-button">Ouvrir le navigateur</button>
-                                    <div class="loader"></div>
-                                    <p class="device-code-hint">En attente de connexion...</p>
-                                </div>
-                            `;
-
-                            popupAccount.openPopup({
-                                title: 'Connexion Microsoft',
-                                content: codeHtml,
-                                color: 'var(--color)',
-                                options: true,
-                                buttonLabel: 'Annuler',
-                                buttonSecondary: true,
-                                onButton: () => window.launcher.auth.microsoft.cancel(sessionId)
-                            });
-
-                            setTimeout(() => {
-                                const openBtn = document.getElementById('open-browser-btn-settings');
-                                const copyBtn = document.getElementById('copy-code-btn-settings');
-                                const copyFeedback = document.getElementById('copy-feedback-settings');
-
-                                if (openBtn) openBtn.addEventListener('click', () => {
-                                    window.launcher.auth.microsoft.openBrowser(sessionId);
-                                });
-                                if (copyBtn) {
-                                    copyBtn.addEventListener('click', async () => {
-                                        await window.launcher.auth.microsoft.copyCode(sessionId);
-                                        copyFeedback.classList.add('visible');
-                                        setTimeout(() => copyFeedback.classList.remove('visible'), 2000);
-                                    });
-                                }
-                            }, 100);
-
-                            const account = await window.launcher.auth.microsoft.poll(sessionId);
-
-                            if (account.error) {
-                                if (account.error === 'cancelled') {
-                                    popupAccount.closePopup();
-                                    return;
-                                }
-                                popupAccount.openPopup({
-                                    title: 'Erreur Microsoft',
-                                    content: escapeHTML(`${account.error}: ${account.errorMessage || 'Erreur inconnue'}`),
-                                    color: 'red',
-                                    options: true
-                                });
-                                return;
-                            }
+                            const account = await microsoftLogin();
+                            if (!account) return;
 
                             await addAccount(account);
                             await accountSelect(account);
-
-                            popupAccount.closePopup();
                         } catch (err) {
                             console.error(`[Settings] Microsoft auth error: ${err}`);
                             popupAccount.openPopup({
@@ -228,46 +152,81 @@ class Settings {
     }
 
     async ram() {
-        let config = await window.launcher.settings.get();
-        let memory = await window.launcher.system.memory();
+        let token = (this.ramToken || 0) + 1;
+        this.ramToken = token;
+        clearTimeout(this.ramSaveTimer);
+        this.ramPending?.();
+        await this.ramSaving;
+        let [configClient, memory, instances] = await Promise.all([
+            window.launcher.settings.get(),
+            window.launcher.system.memory(),
+            config.getInstanceList().catch(() => [])
+        ]);
+        if (token !== this.ramToken) return;
+
         let totalMem = Math.trunc(memory.total / 1073741824 * 10) / 10;
         let freeMem = Math.trunc(memory.free / 1073741824 * 10) / 10;
+        let usable = Number(memory.usableGB) || Math.max(1, Math.floor(totalMem * 1.5) / 2);
+        this.ramUsable = usable;
 
         document.getElementById("total-ram").textContent = `${totalMem} Go`;
         document.getElementById("free-ram").textContent = `${freeMem} Go`;
+        document.getElementById("usable-ram").textContent = `${usable} Go`;
 
-        let sliderDiv = document.querySelector(".memory-slider");
-        sliderDiv.setAttribute("max", Math.trunc((80 * totalMem) / 100));
+        let instance = (Array.isArray(instances) ? instances : []).find(item => item.name === configClient?.instance_selct) || null;
+        let saved = instance ? configClient?.instance_memory?.[instance.name] : null;
+        let current = saved || configClient?.java_config?.java_memory || { min: 2, max: 4 };
+        let reco = instance?.ram;
+        this.ramTarget = instance ? instance.name : null;
+        this.ramRecommended = reco && Number.isFinite(reco.min) && Number.isFinite(reco.max) ? { min: reco.min, max: reco.max } : null;
 
-        if (sliderDiv.offsetWidth === 0) {
-            return;
+        let target = document.getElementById('ram-target');
+        target.classList.toggle('ram-target-none', !instance);
+        target.querySelector('.ram-target-label').textContent = instance ? (saved ? 'Réglage sauvegardé :' : 'Réglage par défaut :') : 'Aucune instance sélectionnée';
+        target.querySelector('.ram-target-name').textContent = instance ? instance.name : '';
+        target.title = instance
+            ? (saved ? `Réglage enregistré pour ${instance.name}` : `${instance.name} utilise encore le réglage par défaut : le modifier l'enregistrera pour cette instance`)
+            : 'Choisissez une instance depuis l\'accueil pour régler sa mémoire';
+
+        if (!this.slider) {
+            document.querySelector('.memory-slider').setAttribute('max', String(usable));
+            this.slider = new Slider('.memory-slider', parseFloat(current.min), parseFloat(current.max));
+            this.slider.on('input', () => this.updateRamHints());
+            this.slider.on('change', (min, max) => {
+                this.updateRamHints();
+                let target = this.ramTarget;
+                clearTimeout(this.ramSaveTimer);
+                this.ramPending = () => {
+                    this.ramPending = null;
+                    this.ramSaving = (this.ramSaving || Promise.resolve()).then(() => target
+                        ? window.launcher.settings.set('instance_memory', { name: target, min, max })
+                        : window.launcher.settings.set('java_memory', { min, max })).then(ok => {
+                            if (ok !== false && target && this.ramTarget === target) document.getElementById('ram-target-label').textContent = 'Réglage sauvegardé :';
+                            return ok;
+                        }).catch(() => false);
+                };
+                this.ramSaveTimer = setTimeout(() => this.ramPending?.(), 250);
+            });
+        } else {
+            this.slider.setRange(0.5, usable);
+            this.slider.setValues(parseFloat(current.min), parseFloat(current.max));
         }
+        this.slider.setRecommended(this.ramRecommended);
+        this.updateRamHints();
+    }
 
-        let ram = config?.java_config?.java_memory ? {
-            ramMin: config.java_config.java_memory.min,
-            ramMax: config.java_config.java_memory.max
-        } : { ramMin: "1", ramMax: "2" };
-
-        if (totalMem < ram.ramMin) {
-            window.launcher.settings.set('java_memory', { min: 1, max: 2 });
-            ram = { ramMin: "1", ramMax: "2" }
-        };
-
-        let slider = new Slider(".memory-slider", parseFloat(ram.ramMin), parseFloat(ram.ramMax));
-
-        this.sliderInitialized = true;
-
-        let minSpan = document.querySelector(".slider-touch-left");
-        let maxSpan = document.querySelector(".slider-touch-right");
-
-        minSpan.setAttribute("value", `${ram.ramMin} Go`);
-        maxSpan.setAttribute("value", `${ram.ramMax} Go`);
-
-        slider.on("change", async (min, max) => {
-            minSpan.setAttribute("value", `${min} Go`);
-            maxSpan.setAttribute("value", `${max} Go`);
-            window.launcher.settings.set('java_memory', { min: min, max: max });
-        });
+    updateRamHints() {
+        let reco = this.ramRecommended;
+        let issues = this.slider && reco ? this.slider.recommendedIssues() : { min: false, max: false };
+        let maxTarget = reco ? Math.min(reco.max, this.ramUsable) : 0;
+        let minTarget = reco ? Math.min(reco.min, this.ramUsable - 0.5) : 0;
+        let go = value => `${value.toLocaleString('fr-FR')} Go`;
+        let text = '';
+        if (issues.min && issues.max) text = `Minimum et maximum en dessous de la recommandation (${go(minTarget)} min, ${go(maxTarget)} max)`;
+        else if (issues.min) text = `Minimum en dessous de la recommandation (${go(minTarget)})`;
+        else if (issues.max) text = `Maximum en dessous de la recommandation (${go(maxTarget)})`;
+        document.getElementById('ram-warning-text').textContent = text;
+        document.getElementById('ram-warning').hidden = !text;
     }
 
     async javaPath() {
@@ -275,9 +234,8 @@ class Settings {
         javaPathText.textContent = await window.launcher.java.runtimePath();
 
         let configClient = await window.launcher.settings.get()
-        let javaPath = configClient?.java_config?.java_path || 'Utiliser la version de Java livrée avec le launcher';
+        this.loadJavaPath(configClient);
         let javaPathInputTxt = document.querySelector(".java-path-input-text");
-        javaPathInputTxt.value = javaPath;
 
         document.querySelector(".java-path-set").addEventListener("click", async () => {
             let result = await window.launcher.java.pick();
@@ -298,16 +256,19 @@ class Settings {
         });
     }
 
+    loadJavaPath(configClient) {
+        document.querySelector(".java-path-input-text").value = configClient?.java_config?.java_path || 'Utiliser la version de Java livrée avec le launcher';
+    }
+
     async resolution() {
         let configClient = await window.launcher.settings.get()
-        let resolution = configClient?.game_config?.screen_size || { width: 1920, height: 1080 };
 
         let width = document.querySelector(".width-size");
         let height = document.querySelector(".height-size");
         let resolutionReset = document.querySelector(".size-reset");
+        let fullscreen = document.querySelector(".fullscreen-switch");
 
-        width.value = resolution.width;
-        height.value = resolution.height;
+        this.loadResolution(configClient);
 
         width.addEventListener("change", async () => {
             await window.launcher.settings.set('screen_size', { width: width.value });
@@ -322,18 +283,141 @@ class Settings {
             height.value = '480';
             await window.launcher.settings.set('screen_size', { width: 854, height: 480 });
         })
+
+        fullscreen.addEventListener("click", async () => {
+            let next = fullscreen.getAttribute('aria-checked') !== 'true';
+            this.markFullscreen(next);
+            let saved = await window.launcher.settings.set('fullscreen', next).catch(() => false);
+            if (saved !== true) this.markFullscreen(!next);
+        })
+    }
+
+    markFullscreen(value) {
+        let fullscreen = document.querySelector(".fullscreen-switch");
+        fullscreen.setAttribute('aria-checked', String(!!value));
+        document.querySelector('.input-size-element').classList.toggle('size-ignored', !!value);
+    }
+
+    loadResolution(configClient) {
+        let resolution = configClient?.game_config?.screen_size || { width: 854, height: 480 };
+        document.querySelector(".width-size").value = resolution.width;
+        document.querySelector(".height-size").value = resolution.height;
+        this.markFullscreen(configClient?.game_config?.fullscreen === true);
+    }
+
+    async launchArgs() {
+        let configClient = await window.launcher.settings.get();
+        this.loadArgs(configClient);
+
+        for (let input of document.querySelectorAll('.args-input')) {
+            let key = input.dataset.key;
+            let feedback = document.getElementById(input.getAttribute('aria-describedby').split(' ').pop());
+            let timer = null;
+
+            const show = (message, error) => {
+                clearTimeout(timer);
+                feedback.textContent = message;
+                feedback.classList.toggle('args-feedback-error', !!error);
+                feedback.classList.toggle('args-feedback-ok', !error && !!message);
+                if (!error && message) timer = setTimeout(() => {
+                    feedback.textContent = '';
+                    feedback.classList.remove('args-feedback-ok');
+                }, 2500);
+            };
+
+            const save = async () => {
+                let result = await window.launcher.settings.set(key, input.value).catch(() => false);
+                if (result === true) {
+                    input.value = input.value.trim().split(/\s+/).filter(Boolean).join(' ');
+                    input.removeAttribute('aria-invalid');
+                    show('Enregistré.', false);
+                } else {
+                    input.setAttribute('aria-invalid', 'true');
+                    show(result?.error || 'Valeur refusée.', true);
+                }
+            };
+
+            input.addEventListener('change', save);
+            document.querySelector(`.args-reset[data-key="${key}"]`).addEventListener('click', () => {
+                input.value = '';
+                save();
+            });
+        }
+    }
+
+    loadArgs(configClient) {
+        let values = {
+            jvm_args: configClient?.java_config?.jvm_args || '',
+            game_args: configClient?.game_config?.game_args || ''
+        };
+        for (let input of document.querySelectorAll('.args-input')) {
+            input.value = values[input.dataset.key] ?? '';
+            input.removeAttribute('aria-invalid');
+            let feedback = document.getElementById(input.getAttribute('aria-describedby').split(' ').pop());
+            feedback.textContent = '';
+            feedback.classList.remove('args-feedback-error', 'args-feedback-ok');
+        }
+    }
+
+    folders() {
+        let feedback = document.querySelector('.folders-feedback');
+        document.querySelector('.folders-box').addEventListener('click', async e => {
+            let button = e.target.closest('.folder-btn');
+            if (!button || button.disabled) return;
+            button.disabled = true;
+            let result = await window.launcher.folders.open(button.dataset.folder).catch(() => ({ error: 'failed', message: 'Impossible d\'ouvrir le dossier.' }));
+            button.disabled = false;
+            feedback.textContent = result?.opened ? '' : String(result?.message || 'Impossible d\'ouvrir le dossier.');
+            feedback.classList.toggle('args-feedback-error', !result?.opened);
+        });
+    }
+
+    resetSettings() {
+        document.querySelector('.settings-reset-btn').addEventListener('click', async () => {
+            let confirmed = await new popup().confirm({
+                title: 'Réinitialiser les paramètres',
+                text: [
+                    'Rétablir tous les paramètres par défaut ?',
+                    'La mémoire de chaque instance, Java, la fenêtre du jeu, les arguments et les options du launcher seront réinitialisés. Vos comptes et vos instances sont conservés.'
+                ],
+                confirmLabel: 'Réinitialiser',
+                cancelLabel: 'Annuler',
+                danger: true
+            });
+            if (!confirmed) return;
+            clearTimeout(this.ramSaveTimer);
+            this.ramPending = null;
+            await this.ramSaving;
+            await window.launcher.settings.reset();
+            let configClient = await window.launcher.settings.get();
+            this.loadJavaPath(configClient);
+            this.loadResolution(configClient);
+            this.loadArgs(configClient);
+            this.loadLauncher(configClient);
+            await applyTheme(configClient?.launcher_config?.theme || 'dark');
+            await this.ram();
+        });
+    }
+
+    loadLauncher(configClient) {
+        document.querySelector(".max-files").value = configClient?.launcher_config?.download_multi || 5;
+        this.theme = configClient?.launcher_config?.theme || "dark";
+        this.markTheme(this.theme, false);
+        this.markClose(configClient?.launcher_config?.closeLauncher || "close-launcher");
     }
 
     async launcher() {
         let configClient = await window.launcher.settings.get();
 
-        let maxDownloadFiles = configClient?.launcher_config?.download_multi || 5;
         let maxDownloadFilesInput = document.querySelector(".max-files");
         let maxDownloadFilesReset = document.querySelector(".max-files-reset");
-        maxDownloadFilesInput.value = maxDownloadFiles;
 
         maxDownloadFilesInput.addEventListener("change", async () => {
-            await window.launcher.settings.set('download_multi', maxDownloadFilesInput.value);
+            let saved = await window.launcher.settings.set('download_multi', maxDownloadFilesInput.value);
+            if (saved !== true) {
+                let current = await window.launcher.settings.get();
+                maxDownloadFilesInput.value = current?.launcher_config?.download_multi || 5;
+            }
         })
 
         maxDownloadFilesReset.addEventListener("click", async () => {
@@ -342,7 +426,6 @@ class Settings {
         })
 
         let themeBox = document.querySelector(".theme-box");
-        let theme = configClient?.launcher_config?.theme || "dark";
 
         const themeButtons = [
             ['theme-btn-clair', 'light'],
@@ -365,7 +448,7 @@ class Settings {
             }
         };
 
-        const markTheme = (value, animate) => {
+        this.markTheme = (value, animate) => {
             for (let [className, name] of themeButtons) {
                 let button = document.querySelector(`.${className}`);
                 button.classList.toggle('active-theme', name === value);
@@ -374,16 +457,26 @@ class Settings {
             moveIndicator(animate);
         };
 
-        markTheme(theme, false);
+        let closeBox = document.querySelector(".close-box");
+
+        this.markClose = value => {
+            for (let button of closeBox.querySelectorAll('.close-btn')) {
+                let active = button.classList.contains(value);
+                button.classList.toggle('active-close', active);
+                button.setAttribute('aria-checked', String(active));
+            }
+        };
+
+        this.loadLauncher(configClient);
         new ResizeObserver(() => moveIndicator(false)).observe(themeBox);
 
         const selectTheme = async target => {
             let entry = themeButtons.find(([className]) => target.classList.contains(className));
-            if (!entry || entry[1] === theme) return;
-            theme = entry[1];
-            markTheme(theme, true);
-            await window.launcher.settings.set('theme', theme);
-            await applyTheme(theme);
+            if (!entry || entry[1] === this.theme) return;
+            this.theme = entry[1];
+            this.markTheme(this.theme, true);
+            await window.launcher.settings.set('theme', this.theme);
+            await applyTheme(this.theme);
         };
 
         themeBox.addEventListener("click", e => {
@@ -400,24 +493,11 @@ class Settings {
             }
         })
 
-        let closeBox = document.querySelector(".close-box");
-        let closeLauncher = configClient?.launcher_config?.closeLauncher || "close-launcher";
-
-        const markClose = value => {
-            for (let button of closeBox.querySelectorAll('.close-btn')) {
-                let active = button.classList.contains(value);
-                button.classList.toggle('active-close', active);
-                button.setAttribute('aria-checked', String(active));
-            }
-        };
-
-        markClose(closeLauncher);
-
         const selectClose = async target => {
             if (target.classList.contains('active-close')) return;
             let value = ['close-launcher', 'close-all', 'close-none'].find(name => target.classList.contains(name));
             if (!value) return;
-            markClose(value);
+            this.markClose(value);
             await window.launcher.settings.set('closeLauncher', value);
         };
 

@@ -4,6 +4,7 @@
  */
 
 import { config, logger, changePanel, setStatus, pkg, popup, accountSelect, addAccount, skin2D, escapeHTML, sanitizeHTML, decodeEntities, isSafeExternalUrl } from '../utils.js'
+import microsoftLogin from '../utils/microsoftLogin.js';
 
 const PIN_ICON = 'M640-760v280l68 68q6 6 9 13.5t3 15.5v23q0 17-11.5 28.5T680-320H520v234q0 17-11.5 28.5T480-46q-17 0-28.5-11.5T440-86v-234H280q-17 0-28.5-11.5T240-360v-23q0-8 3-15.5t9-13.5l68-68v-280q-17 0-28.5-11.5T280-800q0-17 11.5-28.5T320-840h320q17 0 28.5 11.5T680-800q0 17-11.5 28.5T640-760ZM354-400h252l-46-46v-314H400v314l-46 46Zm126 0Z';
 const PIN_ICON_FILLED = 'M640-760v280l68 68q6 6 9 13.5t3 15.5v23q0 17-11.5 28.5T680-320H520v234q0 17-11.5 28.5T480-46q-17 0-28.5-11.5T440-86v-234H280q-17 0-28.5-11.5T240-360v-23q0-8 3-15.5t9-13.5l68-68v-280q-17 0-28.5-11.5T280-800q0-17 11.5-28.5T320-840h320q17 0 28.5 11.5T680-800q0 17-11.5 28.5T640-760Z';
@@ -292,90 +293,12 @@ class Home {
                 }, 300);
 
                 let popupLogin = new popup();
-                popupLogin.openPopup({
-                    title: 'Connexion Microsoft',
-                    content: '<div class="loader"></div><p class="popup-loader-text">Obtention du code...</p>',
-                    color: 'var(--color)'
-                });
-
                 try {
-                    const deviceCodeResult = await window.launcher.auth.microsoft.start();
-
-                    if (deviceCodeResult.error) {
-                        popupLogin.openPopup({
-                            title: 'Erreur',
-                            content: escapeHTML(`${deviceCodeResult.error}: ${deviceCodeResult.errorMessage || 'Erreur inconnue'}`),
-                            color: 'red',
-                            options: true
-                        });
-                        return;
-                    }
-
-                    const { sessionId, user_code } = deviceCodeResult;
-
-                    const codeHtml = `
-                        <div class="device-code">
-                            <p class="device-code-intro">Ouvrez votre navigateur et entrez ce code :</p>
-                            <div class="device-code-box">
-                                <span class="device-code-value">${escapeHTML(user_code)}</span>
-                                <button id="copy-code-btn-home" class="device-code-copy" title="Copier le code">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-                                </button>
-                            </div>
-                            <p id="copy-feedback-home" class="device-code-feedback">Code copié !</p>
-                            <button id="open-browser-btn-home" class="popup-button">Ouvrir le navigateur</button>
-                            <div class="loader"></div>
-                            <p class="device-code-hint">En attente de connexion...</p>
-                        </div>
-                    `;
-
-                    popupLogin.openPopup({
-                        title: 'Connexion Microsoft',
-                        content: codeHtml,
-                        color: 'var(--color)',
-                        options: true,
-                        buttonLabel: 'Annuler',
-                        buttonSecondary: true,
-                        onButton: () => window.launcher.auth.microsoft.cancel(sessionId)
-                    });
-
-                    setTimeout(() => {
-                        const openBtn = document.getElementById('open-browser-btn-home');
-                        const copyBtn = document.getElementById('copy-code-btn-home');
-                        const copyFeedback = document.getElementById('copy-feedback-home');
-
-                        if (openBtn) openBtn.addEventListener('click', () => {
-                            window.launcher.auth.microsoft.openBrowser(sessionId);
-                        });
-                        if (copyBtn) {
-                            copyBtn.addEventListener('click', async () => {
-                                await window.launcher.auth.microsoft.copyCode(sessionId);
-                                copyFeedback.classList.add('visible');
-                                setTimeout(() => copyFeedback.classList.remove('visible'), 2000);
-                            });
-                        }
-                    }, 100);
-
-                    const account = await window.launcher.auth.microsoft.poll(sessionId);
-
-                    if (account.error) {
-                        if (account.error === 'cancelled') {
-                            popupLogin.closePopup();
-                            return;
-                        }
-                        popupLogin.openPopup({
-                            title: 'Erreur Microsoft',
-                            content: escapeHTML(`${account.error}: ${account.errorMessage || 'Erreur inconnue'}`),
-                            color: 'red',
-                            options: true
-                        });
-                        return;
-                    }
+                    const account = await microsoftLogin();
+                    if (!account) return;
 
                     await addAccount(account);
                     await accountSelect(account);
-
-                    popupLogin.closePopup();
 
                     await this.loadAccounts(accountListContainer);
                     playerPopup.style.display = 'flex';
@@ -649,7 +572,7 @@ class Home {
         let collator = new Intl.Collator('fr', { numeric: true, sensitivity: 'base' });
         let matches = available
             .filter(instance => !query || this.normalizeSearch(instance.name).includes(query) || this.normalizeSearch(this.instanceDescription(instance)).includes(query))
-            .sort((a, b) => collator.compare(a.name, b.name));
+            .sort((a, b) => collator.compare(b.name, a.name));
         let pinned = matches.filter(instance => this.pinnedInstances.includes(instance.name));
         let others = matches.filter(instance => !this.pinnedInstances.includes(instance.name));
 
@@ -1049,6 +972,12 @@ class Home {
             console.log('Close');
         });
 
+        window.launcher.game.on('ram-applied', info => {
+            console.log(`[RAM] Mémoire recommandée appliquée pour ${info?.instance} : ${info?.min} à ${info?.max} Go`);
+        });
+
+        window.launcher.game.on('ram-recommendation', info => this.ramRecommendationPopup(info));
+
         window.launcher.game.on('error', err => {
             let popupError = new popup()
 
@@ -1064,6 +993,30 @@ class Home {
             new logger(pkg.name, '#7289da');
             console.log(err);
         });
+    }
+
+    async ramRecommendationPopup(info) {
+        let name = typeof info?.instance === 'string' ? info.instance : '';
+        let recommended = info?.recommended;
+        let capped = info?.capped;
+        if (!name || !recommended || !capped) return;
+        let go = value => `${Number(value)} Go`;
+        let applyRisk = await new popup().confirm({
+            title: 'Mémoire recommandée trop élevée',
+            text: [
+                `${name} recommande ${go(recommended.min)} à ${go(recommended.max)} de RAM, mais votre PC ne peut allouer que ${go(info.usableGB)} au jeu (${go(info.totalGB)} au total, le reste est laissé au système).`,
+                'Réglez la mémoire vous-même, ou utilisez le maximum possible en sachant que le jeu risque de manquer de mémoire.',
+                `Je prends le risque : ${go(capped.min)} à ${go(capped.max)}.`
+            ],
+            confirmLabel: 'Je prends le risque',
+            cancelLabel: 'Ajuster manuellement'
+        });
+        if (applyRisk) {
+            await window.launcher.settings.set('instance_memory', { name, min: capped.min, max: capped.max });
+            return;
+        }
+        await changePanel('settings');
+        document.querySelector('#java')?.click();
     }
 
     async startGame() {

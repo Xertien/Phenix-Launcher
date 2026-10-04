@@ -1,4 +1,4 @@
-<html>
+<html class="booting">
 
 <head>
     <meta charset="UTF-8">
@@ -28,6 +28,42 @@
                 <path
                     d="m256-200-56-56 224-224-224-224 56-56 224 224 224-224 56 56-224 224 224 224-56 56-224-224-224 224Z" />
             </svg>
+        </div>
+    </div>
+
+    <div class="boot" aria-busy="true">
+        <div class="boot-center">
+            <div class="boot-mark">
+                <svg class="boot-logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" shape-rendering="crispEdges" aria-hidden="true">
+                    <defs>
+                        <linearGradient id="boot-gradient" gradientUnits="userSpaceOnUse" x1="0" y1="1" x2="1" y2="0" gradientTransform="matrix(208 0 0 288 152 112)">
+                            <stop offset="0" stop-color="#7C4DFF" />
+                            <stop offset="0.55" stop-color="#FF4D7A" />
+                            <stop offset="1" stop-color="#FFB547" />
+                        </linearGradient>
+                    </defs>
+                    <rect class="boot-tile" width="512" height="512" rx="116" shape-rendering="auto" />
+                    <rect class="boot-px" style="--i:0" x="152" y="352" width="48" height="48" />
+                    <rect class="boot-px" style="--i:1" x="152" y="304" width="48" height="48" />
+                    <rect class="boot-px" style="--i:2" x="152" y="256" width="48" height="48" />
+                    <rect class="boot-px" style="--i:3" x="152" y="208" width="48" height="48" />
+                    <rect class="boot-px" style="--i:4" x="152" y="160" width="48" height="48" />
+                    <rect class="boot-px" style="--i:5" x="152" y="112" width="48" height="48" />
+                    <rect class="boot-px" style="--i:6" x="200" y="112" width="56" height="48" />
+                    <rect class="boot-px" style="--i:7" x="256" y="112" width="56" height="48" />
+                    <rect class="boot-px" style="--i:8" x="312" y="160" width="48" height="48" />
+                    <rect class="boot-px" style="--i:9" x="312" y="208" width="48" height="48" />
+                    <rect class="boot-px" style="--i:10" x="256" y="256" width="56" height="48" />
+                    <rect class="boot-px" style="--i:11" x="200" y="256" width="56" height="48" />
+                    <path class="boot-solid" fill-rule="evenodd" d="M152 112H312V160H360V256H312V304H200V400H152ZM200 160V256H312V160Z" />
+                </svg>
+            </div>
+            <div class="boot-welcome">
+                <div class="boot-head"></div>
+                <span class="boot-welcome-text"></span>
+            </div>
+            <div class="boot-progress" aria-hidden="true"><span></span></div>
+            <p class="boot-status" role="status" aria-live="polite">Chargement…</p>
         </div>
     </div>
 

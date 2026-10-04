@@ -24,7 +24,7 @@
                 <svg xmlns="http://www.w3.org/2000/svg" height="20" viewBox="0 -960 960 960" width="20" fill="currentColor" aria-hidden="true">
                     <path d="M320-120v-80h80v-80H160q-33 0-56.5-23.5T80-360v-400q0-33 23.5-56.5T160-840h640q33 0 56.5 23.5T880-760v400q0 33-23.5 56.5T800-280H560v80h80v80H320ZM160-360h640v-400H160v400Zm0 0v-400 400Z" />
                 </svg>
-                Résolution
+                Jeu
             </button>
             <button type="button" id="launcher" class="nav-settings-btn">
                 <svg xmlns="http://www.w3.org/2000/svg" height="20" viewBox="0 -960 960 960" width="20" fill="currentColor" aria-hidden="true">
@@ -68,28 +68,47 @@
                 <h2 class="settings-section-title">Mémoire (RAM)</h2>
                 <div class="settings-card">
                     <div class="settings-row settings-row-stack">
-                        <div class="settings-row-text">
-                            <div class="settings-row-title">RAM allouée au jeu</div>
-                            <p class="settings-row-desc">Plus de mémoire peut améliorer les performances du jeu, mais trop en allouer ralentit vos autres applications.</p>
+                        <div class="ram-head">
+                            <div class="settings-row-text">
+                                <div class="settings-row-title">RAM allouée au jeu</div>
+                                <p class="settings-row-desc">Plus de mémoire peut améliorer les performances du jeu, mais trop en allouer ralentit vos autres applications.</p>
+                            </div>
+                            <div class="ram-target" id="ram-target">
+                                <span class="ram-target-label" id="ram-target-label"></span>
+                                <b class="ram-target-name" id="ram-target-name"></b>
+                            </div>
                         </div>
                         <div class="memory-slider" min="0.5" max="8" step="0.5">
-                            <div class="slider-touch-left" role="slider" tabindex="0" aria-label="RAM minimale">
-                                <span value="0 Go"></span>
-                            </div>
-                            <div class="slider-touch-right" role="slider" tabindex="0" aria-label="RAM maximale">
-                                <span value="0 Go"></span>
-                            </div>
+                            <div class="slider-reco" aria-hidden="true" hidden></div>
                             <div class="slider-line">
                                 <span></span>
                             </div>
+                            <span class="slider-reco-mark slider-reco-min" aria-hidden="true" hidden></span>
+                            <span class="slider-reco-mark slider-reco-max" aria-hidden="true" hidden></span>
+                            <div class="slider-touch-left" role="slider" tabindex="0" aria-label="RAM minimale" aria-describedby="ram-target ram-warning">
+                                <span value="0 Go"></span>
+                            </div>
+                            <div class="slider-touch-right" role="slider" tabindex="0" aria-label="RAM maximale" aria-describedby="ram-target ram-warning">
+                                <span value="0 Go"></span>
+                            </div>
+                        </div>
+                        <div class="ram-status">
+                            <p class="ram-warning" id="ram-warning" role="status" hidden>
+                                <svg xmlns="http://www.w3.org/2000/svg" height="18" viewBox="0 -960 960 960" width="18" fill="currentColor" aria-hidden="true">
+                                    <path d="m40-120 440-760 440 760H40Zm138-80h604L480-720 178-200Zm302-40q17 0 28.5-11.5T520-280q0-17-11.5-28.5T480-320q-17 0-28.5 11.5T440-280q0 17 11.5 28.5T480-240Zm-40-120h80v-200h-80v200Zm40-100Z" />
+                                </svg>
+                                <span id="ram-warning-text"></span>
+                            </p>
                         </div>
                         <div class="ram-info-block">
                             <span class="ram-chip">Total : <b id="total-ram">0 Go</b></span>
                             <span class="ram-chip">Disponible : <b id="free-ram">0 Go</b></span>
+                            <span class="ram-chip" title="Mémoire totale moins la réserve laissée au système">Allouable : <b id="usable-ram">0 Go</b></span>
                         </div>
                     </div>
                     <div class="settings-row settings-hints">
-                        <p class="settings-row-desc"><b>RAM maximale :</b> ne dépassez pas 50 % de la RAM totale de votre PC.</p>
+                        <p class="settings-row-desc"><b>Par instance :</b> chaque instance garde sa propre mémoire. Changez d'instance depuis l'accueil pour la régler.</p>
+                        <p class="settings-row-desc"><b>RAM maximale :</b> le curseur s'arrête en laissant au moins 2 Go (ou 25 %) à votre système.</p>
                         <p class="settings-row-desc"><b>RAM minimale :</b> mémoire réservée au démarrage du jeu, 4 Go maximum recommandés.</p>
                     </div>
                 </div>
@@ -112,6 +131,17 @@
                             </div>
                         </div>
                     </div>
+                    <div class="settings-row settings-row-stack">
+                        <div class="settings-row-text">
+                            <div class="settings-row-title"><label for="jvm-args-input">Arguments JVM</label></div>
+                            <p class="settings-row-desc" id="jvm-args-desc">Options supplémentaires passées à Java, séparées par des espaces (ex. <code class="settings-code">-XX:+UseG1GC</code>). La mémoire se règle avec le curseur ci-dessus. Laissez vide en cas de doute.</p>
+                        </div>
+                        <div class="args-field">
+                            <input type="text" id="jvm-args-input" class="settings-input-text args-input" data-key="jvm_args" maxlength="1024" spellcheck="false" autocomplete="off" placeholder="Aucun argument" aria-describedby="jvm-args-desc jvm-args-feedback">
+                            <button type="button" class="args-reset settings-btn-ghost" data-key="jvm_args">Effacer</button>
+                        </div>
+                        <p class="args-feedback" id="jvm-args-feedback" aria-live="polite"></p>
+                    </div>
                 </div>
             </section>
         </div>
@@ -120,11 +150,12 @@
     <div id="resolution-tab" class="container-settings">
         <div class="settings-page">
             <header class="settings-header">
-                <h1 class="settings-title">Résolution</h1>
-                <p class="settings-subtitle">Taille de la fenêtre de Minecraft au démarrage du jeu.</p>
+                <h1 class="settings-title">Jeu</h1>
+                <p class="settings-subtitle">Fenêtre de Minecraft et options passées au jeu à son démarrage.</p>
             </header>
 
             <section class="settings-section">
+                <h2 class="settings-section-title">Fenêtre</h2>
                 <div class="settings-card">
                     <div class="settings-row">
                         <div class="settings-row-text">
@@ -139,6 +170,34 @@
                             </div>
                             <button type="button" class="size-reset size-btn settings-btn-ghost">Par défaut</button>
                         </div>
+                    </div>
+                    <div class="settings-row">
+                        <div class="settings-row-text">
+                            <div class="settings-row-title" id="fullscreen-title">Plein écran</div>
+                            <p class="settings-row-desc" id="fullscreen-desc">Démarre Minecraft directement en plein écran. La taille de fenêtre ci-dessus est alors ignorée.</p>
+                        </div>
+                        <div class="settings-row-control">
+                            <button type="button" class="settings-switch fullscreen-switch" role="switch" aria-checked="false" aria-labelledby="fullscreen-title" aria-describedby="fullscreen-desc">
+                                <span class="settings-switch-thumb" aria-hidden="true"></span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="settings-section">
+                <h2 class="settings-section-title">Avancé</h2>
+                <div class="settings-card">
+                    <div class="settings-row settings-row-stack">
+                        <div class="settings-row-text">
+                            <div class="settings-row-title"><label for="game-args-input">Arguments de jeu</label></div>
+                            <p class="settings-row-desc" id="game-args-desc">Options ajoutées à la ligne de commande de Minecraft (ex. <code class="settings-code">--quickPlayMultiplayer play.exemple.fr</code>). Le compte, les dossiers et la résolution restent gérés par le launcher.</p>
+                        </div>
+                        <div class="args-field">
+                            <input type="text" id="game-args-input" class="settings-input-text args-input" data-key="game_args" maxlength="512" spellcheck="false" autocomplete="off" placeholder="Aucun argument" aria-describedby="game-args-desc game-args-feedback">
+                            <button type="button" class="args-reset settings-btn-ghost" data-key="game_args">Effacer</button>
+                        </div>
+                        <p class="args-feedback" id="game-args-feedback" aria-live="polite"></p>
                     </div>
                 </div>
             </section>
@@ -225,8 +284,41 @@
                             <p class="settings-row-desc">Nombre maximum de fichiers téléchargés en parallèle lors des mises à jour. Ne modifiez cette valeur qu'en cas de problème de connexion.</p>
                         </div>
                         <div class="settings-row-control">
-                            <input type="number" class="max-files input-max-files" aria-label="Fichiers téléchargés simultanément">
+                            <input type="number" class="max-files input-max-files" min="1" max="30" aria-label="Fichiers téléchargés simultanément (1 à 30)">
                             <button type="button" class="max-files-reset max-files-btn settings-btn-ghost">Par défaut</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="settings-section">
+                <h2 class="settings-section-title">Dossiers</h2>
+                <div class="settings-card">
+                    <div class="settings-row">
+                        <div class="settings-row-text">
+                            <div class="settings-row-title">Ouvrir un dossier</div>
+                            <p class="settings-row-desc">Accédez aux fichiers du jeu, de l'instance sélectionnée (mods, captures, sauvegardes) ou à ses journaux.</p>
+                        </div>
+                        <div class="settings-row-control folders-box">
+                            <button type="button" class="settings-btn-secondary folder-btn" data-folder="game">Jeu</button>
+                            <button type="button" class="settings-btn-secondary folder-btn" data-folder="instance">Instance</button>
+                            <button type="button" class="settings-btn-secondary folder-btn" data-folder="logs">Journaux</button>
+                        </div>
+                    </div>
+                    <p class="args-feedback folders-feedback" role="status" aria-live="polite"></p>
+                </div>
+            </section>
+
+            <section class="settings-section">
+                <h2 class="settings-section-title">Réinitialisation</h2>
+                <div class="settings-card">
+                    <div class="settings-row">
+                        <div class="settings-row-text">
+                            <div class="settings-row-title">Paramètres par défaut</div>
+                            <p class="settings-row-desc">Rétablit la mémoire (y compris celle de chaque instance), Java, la fenêtre du jeu, les arguments et les options du launcher. Vos comptes et vos instances ne sont pas touchés.</p>
+                        </div>
+                        <div class="settings-row-control">
+                            <button type="button" class="settings-btn-danger settings-reset-btn">Réinitialiser</button>
                         </div>
                     </div>
                 </div>

@@ -1,3 +1,4 @@
+const { shell } = require('electron');
 const fs = require('fs');
 const path = require('path');
 const settings = require('./settings.js');
@@ -30,6 +31,51 @@ class Instances {
         let config = await remote.getCachedConfig().catch(() => null);
         if (!config || !isSafePathSegment(config.dataDirectory)) return null;
         return path.resolve(game().getGamePath(config.dataDirectory), 'instances');
+    }
+
+    async isFresh(name) {
+        let root = await this.root();
+        let info = root ? await this.inspect(root, name) : { exists: false };
+        if (!info.exists) return true;
+        let pending = await settings.getPendingInstances().catch(() => []);
+        return pending.includes(name);
+    }
+
+    async folderTarget(kind) {
+        let config = await remote.getCachedConfig().catch(() => null);
+        if (!config || !isSafePathSegment(config.dataDirectory)) return { error: 'invalid_config', message: 'Configuration distante invalide.' };
+        let base = path.resolve(game().getGamePath(config.dataDirectory));
+        if (kind === 'game') return { base, target: base, missing: 'Le dossier du jeu n\'existe pas encore. Lancez une instance une première fois.' };
+
+        let configClient = await settings.get();
+        let name = configClient.instance_selct;
+        let list = await remote.getInstanceList().catch(() => []);
+        if (!isSafePathSegment(name) || !Array.isArray(list) || !list.some(instance => instance?.name === name)) {
+            return { error: 'no_instance', message: 'Aucune instance sélectionnée.' };
+        }
+        let instanceDir = path.join(base, 'instances', name);
+        if (kind === 'instance') return { base, target: instanceDir, missing: `L'instance ${name} n'est pas encore installée.` };
+        return { base, target: path.join(instanceDir, 'logs'), missing: `Aucun journal pour ${name} : lancez l'instance une première fois.` };
+    }
+
+    async openFolder(kind) {
+        let info = await this.folderTarget(kind);
+        if (info.error) return info;
+        let baseReal;
+        let targetReal;
+        try {
+            baseReal = await fs.promises.realpath(info.base);
+            let stat = await fs.promises.lstat(info.target);
+            if (stat.isSymbolicLink() || !stat.isDirectory()) return { error: 'missing', message: info.missing };
+            targetReal = await fs.promises.realpath(info.target);
+        } catch (e) {
+            return { error: 'missing', message: info.missing };
+        }
+        let relative = path.relative(baseReal, targetReal);
+        if (relative.startsWith('..') || path.isAbsolute(relative)) return { error: 'invalid_path', message: 'Chemin refusé.' };
+        let failure = await shell.openPath(targetReal);
+        if (failure) return { error: 'failed', message: 'Impossible d\'ouvrir le dossier.' };
+        return { opened: true };
     }
 
     async inspect(root, name) {
